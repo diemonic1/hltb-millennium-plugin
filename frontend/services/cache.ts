@@ -1,10 +1,5 @@
-import type { HltbGameResult } from './hltbApi';
-
-export interface CacheEntry {
-  data: HltbGameResult | null;
-  timestamp: number;
-  notFound: boolean;
-}
+import type { HltbGameResult, CacheEntry } from '../types';
+import { log, logError } from './logger';
 
 interface CacheStore {
   [appId: number]: CacheEntry;
@@ -13,9 +8,6 @@ interface CacheStore {
 const CACHE_KEY = 'hltb-millennium-cache';
 const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
 
-/**
- * Get cached HLTB data for an app (returns even if stale)
- */
 export function getCache(appId: number): { entry: CacheEntry; isStale: boolean } | null {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
@@ -29,14 +21,11 @@ export function getCache(appId: number): { entry: CacheEntry; isStale: boolean }
     const isStale = Date.now() - entry.timestamp > CACHE_DURATION;
     return { entry, isStale };
   } catch (e) {
-    console.error('[HLTB] Cache read error:', e);
+    logError('Cache read error:', e);
     return null;
   }
 }
 
-/**
- * Store HLTB data in cache
- */
 export function setCache(appId: number, data: HltbGameResult | null): void {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
@@ -50,25 +39,19 @@ export function setCache(appId: number, data: HltbGameResult | null): void {
 
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
   } catch (e) {
-    console.error('[HLTB] Cache write error:', e);
+    logError('Cache write error:', e);
   }
 }
 
-/**
- * Clear all cached HLTB data
- */
 export function clearCache(): void {
   try {
     localStorage.removeItem(CACHE_KEY);
-    console.log('[HLTB] Cache cleared');
+    log('Cache cleared');
   } catch (e) {
-    console.error('[HLTB] Cache clear error:', e);
+    logError('Cache clear error:', e);
   }
 }
 
-/**
- * Get cache statistics
- */
 export function getCacheStats(): { count: number; oldestTimestamp: number | null } {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
