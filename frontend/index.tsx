@@ -1,9 +1,24 @@
-import { Millennium, sleep } from '@steambrew/client';
+import { Millennium } from '@steambrew/client';
 import { fetchHltbData, formatTime, type HltbGameResult } from './services/hltbApi';
+import {
+  initUIMode,
+  getCurrentConfig,
+  getCurrentMode,
+  registerModeChangeListener,
+  onModeChange,
+  logDOMStructure,
+  EUIMode,
+  type UIModeConfig,
+} from './services/uiMode';
 
 let steamDocument: Document | undefined;
 let currentAppId: number | null = null;
 let observer: MutationObserver | null = null;
+let currentConfig: UIModeConfig;
+
+function log(...args: unknown[]): void {
+  console.log('[HLTB]', ...args);
+}
 
 // Styles matching hltb-for-deck
 const HLTB_STYLES = `
@@ -154,15 +169,24 @@ function createDisplay(data: HltbGameResult): HTMLElement {
 }
 
 async function checkAndInject(): Promise<void> {
-  // Find the header image element
-  const headerImg = steamDocument?.querySelector('._3NBxSLAZLbbbnul8KfDFjw._2dzwXkCVAuZGFC-qKgo8XB') as HTMLImageElement | null;
+  if (!steamDocument || !currentConfig) return;
+
+  // Find the header image element using current mode's selector
+  const headerImg = steamDocument.querySelector(currentConfig.headerImageSelector) as HTMLImageElement | null;
 
   if (!headerImg) {
+    // In Big Picture mode, log DOM structure periodically to help find selectors
+    if (getCurrentMode() === EUIMode.GamePad) {
+      // Only log occasionally to avoid spam
+      if (Math.random() < 0.01) {
+        log('Big Picture: Header image not found, use hltbDebug.logDOM() to inspect');
+      }
+    }
     return;
   }
 
   const src = headerImg.src || '';
-  const match = src.match(/\/assets\/(\d+)/);
+  const match = src.match(currentConfig.appIdPattern);
   if (!match) {
     return;
   }
@@ -174,10 +198,16 @@ async function checkAndInject(): Promise<void> {
   }
 
   currentAppId = appId;
+  log('Found game page for appId:', appId);
   removeExisting();
 
-  const headerContainer = headerImg.closest('._2aPcBP45fdgOK22RN0jbhm');
+  const headerContainer = headerImg.closest(currentConfig.headerContainerSelector);
   if (!headerContainer) {
+    log('Header container not found with selector:', currentConfig.headerContainerSelector);
+    // Log DOM structure to help debug
+    if (getCurrentMode() === EUIMode.GamePad) {
+      logDOMStructure(steamDocument);
+    }
     return;
   }
 
@@ -210,12 +240,19 @@ async function checkAndInject(): Promise<void> {
       });
     }
   } catch (e) {
+    log('Error fetching HLTB data:', e);
     // Keep placeholder on error
   }
 }
 
 function setupObserver(): void {
   if (!steamDocument) return;
+
+  // Clean up existing observer
+  if (observer) {
+    observer.disconnect();
+    observer = null;
+  }
 
   observer = new MutationObserver(() => {
     checkAndInject();
@@ -226,20 +263,65 @@ function setupObserver(): void {
     subtree: true,
   });
 
+  log('MutationObserver set up for', currentConfig.modeName, 'mode');
+
   // Initial check
   checkAndInject();
 }
 
 async function init(): Promise<void> {
-  // @ts-ignore
-  while (!steamDocument) {
-    // @ts-ignore
-    steamDocument = SteamUIStore?.WindowStore?.SteamUIWindows?.[0]?.m_BrowserWindow?.document;
-    await sleep(500);
-  }
+  log('Initializing HLTB plugin...');
 
-  injectStyles();
-  setupObserver();
+  try {
+    // Initialize UI mode detection and get document
+    const { mode, document } = await initUIMode();
+    steamDocument = document;
+    currentConfig = getCurrentConfig();
+
+    log('Mode:', currentConfig.modeName);
+    log('Using selectors:', {
+      headerImage: currentConfig.headerImageSelector,
+      headerContainer: currentConfig.headerContainerSelector,
+    });
+
+    // Inject styles and set up observer
+    injectStyles();
+    setupObserver();
+
+    // Register for mode changes (for when user switches between Desktop and Big Picture)
+    registerModeChangeListener();
+
+    // Handle mode changes by reinitializing with new document
+    onModeChange((newMode, newDoc) => {
+      log('Reinitializing for mode change...');
+      steamDocument = newDoc;
+      currentConfig = getCurrentConfig();
+      currentAppId = null; // Reset so we re-detect the current game
+
+      // Re-inject styles and observer for new document
+      injectStyles();
+      setupObserver();
+
+      log('Reinitialized for', currentConfig.modeName, 'mode');
+    });
+
+    // Log initial DOM structure in Big Picture mode to help find selectors
+    if (mode === EUIMode.GamePad) {
+      log('Big Picture mode detected. Use these console commands to find selectors:');
+      log('  hltbDebug.logDOM()        - Log overall DOM structure');
+      log('  hltbDebug.findImages()    - Find all images');
+      log('  hltbDebug.findByClass(x)  - Find elements by class name');
+      log('  hltbDebug.inspectElement(selector) - Inspect a specific element');
+
+      // Wait a bit then log DOM structure automatically
+      setTimeout(() => {
+        log('Auto-logging DOM structure for Big Picture mode...');
+        logDOMStructure(steamDocument!);
+      }, 3000);
+    }
+  } catch (e) {
+    log('Failed to initialize:', e);
+  }
 }
 
 init();
