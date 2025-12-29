@@ -21,9 +21,7 @@ function getDesktopDocument(): Document | undefined {
 
 function getGamepadDocument(): Document | undefined {
   // @ts-ignore - SteamUIStore is a global
-  const windowStore = SteamUIStore?.WindowStore;
-  const gamepadWindow = windowStore?.GamepadUIMainWindowInstance;
-  return gamepadWindow?.m_BrowserWindow?.document || gamepadWindow?.BrowserWindow?.document;
+  return SteamUIStore?.WindowStore?.GamepadUIMainWindowInstance?.BrowserWindow?.document;
 }
 
 async function waitForDocument(): Promise<Document> {
@@ -55,14 +53,14 @@ async function fetchDocumentForMode(mode: EUIMode): Promise<Document | undefined
       // @ts-ignore
       const windows = SteamUIStore?.WindowStore?.SteamUIWindows || [];
       for (const win of windows) {
-        const winDoc = win?.m_BrowserWindow?.document;
-        if (winDoc?.body && win?.m_BrowserWindow?.name?.includes('Desktop')) {
+        const winDoc = win?.BrowserWindow?.document;
+        if (winDoc?.body && win?.BrowserWindow?.name?.includes('Desktop')) {
           doc = winDoc;
           break;
         }
       }
       if (!doc && windows[0]) {
-        doc = windows[0]?.m_BrowserWindow?.document;
+        doc = windows[0]?.BrowserWindow?.document;
       }
     }
 
