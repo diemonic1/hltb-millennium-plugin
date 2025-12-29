@@ -27,8 +27,9 @@ M.REFERER_HEADER = M.BASE_URL
 M.TIMEOUT = 60
 M.TOKEN_TTL = 300
 M.SEARCH_SIZE = 20
--- Static fallback URL
 M.SEARCH_URL = M.BASE_URL .. "api/search"
+M.RETRY_DISTANCE_RATIO = 0.2      -- Retry with simplified name if distance > 20% of name length
+M.RETRY_DISTANCE_MIN = 5          -- Minimum distance threshold for retry
 
 -- Cache
 local cached_token = nil
@@ -486,39 +487,36 @@ function M.search(query, options)
     return data
 end
 
--- Find most compatible game data (matches reference: fetchMostCompatibleGameData)
-function M.search_best_match(app_name, steam_app_id)
-    logger:info("Searching HLTB for: " .. app_name)
+local function should_retry_with_simplified(distance, name_length)
+    local threshold = math.max(M.RETRY_DISTANCE_MIN, math.floor(name_length * M.RETRY_DISTANCE_RATIO))
+    return distance > threshold
+end
 
-    local search_results = M.search(app_name)
-    if not search_results then
-        return nil
+-- Search and find best match for a given query
+-- Returns: best_item, best_distance (or nil, nil if no results)
+local function find_best_match(query, steam_app_id)
+    local search_results = M.search(query)
+    if not search_results or #search_results.data == 0 then
+        return nil, nil
     end
 
-    if #search_results.data == 0 then
-        logger:info("No search results found for: " .. app_name)
-        return nil
-    end
+    logger:info("Found " .. #search_results.data .. " search results for: " .. query)
 
-    logger:info("Found " .. #search_results.data .. " search results")
+    local sanitized_query = utils.sanitize_game_name(query):lower()
 
-    -- Search results already contain completion times, so we can return them directly
-    -- Only fetch_game_data is needed for Steam ID verification (profile_steam field)
-
-    -- Check exact name match first (no HTTP needed)
-    local normalized_app_name = utils.sanitize_game_name(app_name):lower()
+    -- Check exact name match first
     for _, item in ipairs(search_results.data) do
-        if utils.sanitize_game_name(item.game_name):lower() == normalized_app_name then
+        if utils.sanitize_game_name(item.game_name):lower() == sanitized_query then
             logger:info("Found exact name match: " .. item.game_name)
-            return item
+            return item, 0
         end
     end
 
     -- Find closest match using Levenshtein distance
     local possible_choices = {}
     for _, item in ipairs(search_results.data) do
-        local normalized_item_name = utils.sanitize_game_name(item.game_name):lower()
-        local distance = utils.levenshtein_distance(normalized_app_name, normalized_item_name)
+        local sanitized_item_name = utils.sanitize_game_name(item.game_name):lower()
+        local distance = utils.levenshtein_distance(sanitized_query, sanitized_item_name)
         table.insert(possible_choices, {
             distance = distance,
             comp_all_count = item.comp_all_count,
@@ -534,7 +532,7 @@ function M.search_best_match(app_name, steam_app_id)
         return a.distance < b.distance
     end)
 
-    -- Try Steam ID match on top candidates (requires HTTP to get profile_steam)
+    -- Try Steam ID match on top candidates
     if steam_app_id and #possible_choices > 0 then
         local max_steam_id_checks = 3
         for i = 1, math.min(max_steam_id_checks, #possible_choices) do
@@ -542,7 +540,7 @@ function M.search_best_match(app_name, steam_app_id)
             local game_data = fetch_game_data(candidate.item.game_id)
             if game_data and game_data.profile_steam == steam_app_id then
                 logger:info("Found match by Steam ID: " .. candidate.item.game_name)
-                return candidate.item
+                return candidate.item, 0
             end
         end
     end
@@ -550,10 +548,43 @@ function M.search_best_match(app_name, steam_app_id)
     -- Return best Levenshtein match
     if #possible_choices > 0 then
         local best = possible_choices[1]
-        logger:info("Found closest match: " .. best.item.game_name .. " (distance: " .. best.distance .. ")")
-        return best.item
+        return best.item, best.distance
     end
 
+    return nil, nil
+end
+
+-- Find most compatible game data (matches reference: fetchMostCompatibleGameData)
+function M.search_best_match(app_name, steam_app_id)
+    logger:info("Searching HLTB for: " .. app_name)
+
+    -- Try with original name first
+    local best_item, best_distance = find_best_match(app_name, steam_app_id)
+
+    -- Check if we should retry with simplified name
+    local simplified_name = utils.simplify_game_name(app_name)
+    local should_retry = simplified_name ~= app_name and (
+        best_item == nil or
+        should_retry_with_simplified(best_distance, #app_name)
+    )
+
+    if should_retry then
+        logger:info("Retrying search with simplified name: " .. simplified_name)
+        local retry_item, retry_distance = find_best_match(simplified_name, steam_app_id)
+
+        -- Use retry result if it's better (or if original had no results)
+        if retry_item and (best_item == nil or retry_distance < best_distance) then
+            best_item = retry_item
+            best_distance = retry_distance
+        end
+    end
+
+    if best_item then
+        logger:info("Best match: " .. best_item.game_name .. " (distance: " .. (best_distance or 0) .. ")")
+        return best_item
+    end
+
+    logger:info("No match found for: " .. app_name)
     return nil
 end
 

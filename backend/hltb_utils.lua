@@ -30,21 +30,53 @@ function M.levenshtein_distance(s1, s2)
     return matrix[len1][len2]
 end
 
--- Sanitize game name for search/comparison (remove TM/copyright, keep accented letters)
+-- Sanitize game name for comparison (remove TM/copyright symbols)
 function M.sanitize_game_name(name)
-    -- Remove trademark/copyright symbols only (keep accented letters)
     name = name:gsub("™", "")
     name = name:gsub("®", "")
     name = name:gsub("©", "")
-    -- Remove common edition suffixes
-    name = name:gsub("%s*[-:]%s*[Dd]efinitive%s+[Ee]dition", "")
-    name = name:gsub("%s*[-:]%s*[Uu]ltimate%s+[Ee]dition", "")
-    name = name:gsub("%s*[-:]%s*[Cc]omplete%s+[Ee]dition", "")
-    name = name:gsub("%s*[-:]%s*GOTY%s*[Ee]?d?i?t?i?o?n?", "")
-    name = name:gsub("%s*[-:]%s*[Gg]ame%s+of%s+the%s+[Yy]ear%s*[Ee]?d?i?t?i?o?n?", "")
+    name = name:gsub("%s+", " ")
+    name = name:match("^%s*(.-)%s*$") or name
+    return name
+end
+
+-- Simplify game name for fallback search (strip edition suffixes, year tags, etc.)
+function M.simplify_game_name(name)
+    local original = name
+
+    -- Anniversary patterns (longer patterns first)
+    name = name:gsub("%s+%d+[snrt][tdh]%s+[Aa]nniversary%s+[Ee]dition$", "")
+    name = name:gsub("%s+[-–]%s*[Aa]nniversary%s+[Ee]dition$", "")
+    name = name:gsub("%s+[Aa]nniversary%s+[Ee]dition$", "")
+
+    -- Edition suffixes (with optional dash/colon prefix)
+    name = name:gsub("%s+[-–:]%s*[Ee]nhanced%s+[Ee]dition$", "")
+    name = name:gsub("%s+[Ee]nhanced%s+[Ee]dition$", "")
+    name = name:gsub("%s+[-–:]%s*[Cc]omplete%s+[Ee]dition$", "")
+    name = name:gsub("%s+[Cc]omplete%s+[Ee]dition$", "")
+    name = name:gsub("%s+[-–:]%s*[Dd]efinitive%s+[Ee]dition$", "")
+    name = name:gsub("%s+[Dd]efinitive%s+[Ee]dition$", "")
+    name = name:gsub("%s+[-–:]%s*[Uu]ltimate%s+[Ee]dition$", "")
+    name = name:gsub("%s+[Uu]ltimate%s+[Ee]dition$", "")
+    name = name:gsub("%s+[-–:]%s*[Ss]pecial%s+[Ee]dition$", "")
+    name = name:gsub("%s+[Ss]pecial%s+[Ee]dition$", "")
+    name = name:gsub("%s+[-–:]%s*GOTY%s*[Ee]?d?i?t?i?o?n?$", "")
+    name = name:gsub("%s+[-–:]%s*[Gg]ame%s+of%s+the%s+[Yy]ear%s*[Ee]?d?i?t?i?o?n?$", "")
+
+    -- Remastered
+    name = name:gsub("%s+[-–:]%s*[Rr]emastered$", "")
+    name = name:gsub("%s+[Rr]emastered$", "")
+
+    -- Collection
+    name = name:gsub("%s+[Cc]ollection$", "")
+
+    -- Year tags at end: (2013), (2020), etc.
+    name = name:gsub("%s+%([12][09]%d%d%)$", "")
+
     -- Clean up whitespace
     name = name:gsub("%s+", " ")
     name = name:match("^%s*(.-)%s*$") or name
+
     return name
 end
 

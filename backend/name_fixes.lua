@@ -14,4 +14,5 @@ return {
     ["Warhammer 40,000: Space Marine - Anniversary Edition"] = "Warhammer 40,000: Space Marine",
     ["Risk of Rain (2013)"] = "Risk of Rain",
     ["The Witcher 2: Assassins of Kings Enhanced Edition"] = "The Witcher 2: Assassins of Kings",
+    ["Scott Pilgrim vs. The World: The Game – Complete Edition"] = "Scott Pilgrim vs. The World: The Game",
 }
