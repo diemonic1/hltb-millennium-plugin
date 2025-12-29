@@ -39,8 +39,8 @@ jobs:
 
       - name: Create zip
         run: |
-          mkdir -p build/hltb-for-millennium
-          cp -r .millennium/Dist build/hltb-for-millennium/
+          mkdir -p build/hltb-for-millennium/.millennium
+          cp -r .millennium/Dist build/hltb-for-millennium/.millennium/
           cp -r backend build/hltb-for-millennium/
           cp plugin.json build/hltb-for-millennium/
           cp LICENSE build/hltb-for-millennium/
