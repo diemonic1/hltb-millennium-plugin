@@ -42,36 +42,55 @@ end
 
 -- Simplify game name for fallback search (strip edition suffixes, year tags, etc.)
 function M.simplify_game_name(name)
-    local original = name
+    -- Normalize Unicode dashes to ASCII hyphen for pattern matching
+    name = name:gsub("–", "-")  -- en-dash U+2013
+    name = name:gsub("—", "-")  -- em-dash U+2014
 
-    -- Anniversary patterns (longer patterns first)
-    name = name:gsub("%s+%d+[snrt][tdh]%s+[Aa]nniversary%s+[Ee]dition$", "")
-    name = name:gsub("%s+[-–]%s*[Aa]nniversary%s+[Ee]dition$", "")
-    name = name:gsub("%s+[Aa]nniversary%s+[Ee]dition$", "")
+    -- Loop until no more changes (handles stacked suffixes like "Enhanced Edition Director's Cut")
+    local prev
+    repeat
+        prev = name
 
-    -- Edition suffixes (with optional dash/colon prefix)
-    name = name:gsub("%s+[-–:]%s*[Ee]nhanced%s+[Ee]dition$", "")
-    name = name:gsub("%s+[Ee]nhanced%s+[Ee]dition$", "")
-    name = name:gsub("%s+[-–:]%s*[Cc]omplete%s+[Ee]dition$", "")
-    name = name:gsub("%s+[Cc]omplete%s+[Ee]dition$", "")
-    name = name:gsub("%s+[-–:]%s*[Dd]efinitive%s+[Ee]dition$", "")
-    name = name:gsub("%s+[Dd]efinitive%s+[Ee]dition$", "")
-    name = name:gsub("%s+[-–:]%s*[Uu]ltimate%s+[Ee]dition$", "")
-    name = name:gsub("%s+[Uu]ltimate%s+[Ee]dition$", "")
-    name = name:gsub("%s+[-–:]%s*[Ss]pecial%s+[Ee]dition$", "")
-    name = name:gsub("%s+[Ss]pecial%s+[Ee]dition$", "")
-    name = name:gsub("%s+[-–:]%s*GOTY%s*[Ee]?d?i?t?i?o?n?$", "")
-    name = name:gsub("%s+[-–:]%s*[Gg]ame%s+of%s+the%s+[Yy]ear%s*[Ee]?d?i?t?i?o?n?$", "")
+        -- Anniversary patterns (longer patterns first)
+        name = name:gsub("%s+%d+[snrt][tdh]%s+[Aa]nniversary%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Aa]nniversary%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Aa]nniversary%s+[Ee]dition$", "")
 
-    -- Remastered
-    name = name:gsub("%s+[-–:]%s*[Rr]emastered$", "")
-    name = name:gsub("%s+[Rr]emastered$", "")
+        -- Edition suffixes (with optional dash/colon prefix)
+        name = name:gsub("%s+[-:]%s*[Ee]nhanced%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Ee]nhanced%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Cc]omplete%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Cc]omplete%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Dd]efinitive%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Dd]efinitive%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Uu]ltimate%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Uu]ltimate%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Ss]pecial%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Ss]pecial%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Ll]egacy%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Ll]egacy%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Mm]aximum%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Mm]aximum%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*GOTY%s*[Ee]?d?i?t?i?o?n?$", "")
+        name = name:gsub("%s+[-:]%s*[Gg]ame%s+of%s+the%s+[Yy]ear%s*[Ee]?d?i?t?i?o?n?$", "")
 
-    -- Collection
-    name = name:gsub("%s+[Cc]ollection$", "")
+        -- Remastered
+        name = name:gsub("%s+[-:]%s*[Rr]emastered$", "")
+        name = name:gsub("%s+[Rr]emastered$", "")
 
-    -- Year tags at end: (2013), (2020), etc.
-    name = name:gsub("%s+%([12][09]%d%d%)$", "")
+        -- Director's Cut
+        name = name:gsub("%s+[-:]%s*[Dd]irector'?s?%s+[Cc]ut$", "")
+        name = name:gsub("%s+[Dd]irector'?s?%s+[Cc]ut$", "")
+
+        -- Collection
+        name = name:gsub("%s+[Cc]ollection$", "")
+
+        -- Year tags at end: (2013), (2020), etc.
+        name = name:gsub("%s+%([12][09]%d%d%)$", "")
+
+        -- Clean up trailing punctuation left after stripping (e.g., trailing " -")
+        name = name:gsub("%s*[-:]%s*$", "")
+    until name == prev
 
     -- Clean up whitespace
     name = name:gsub("%s+", " ")

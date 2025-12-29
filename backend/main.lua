@@ -26,17 +26,17 @@ function GetHltbData(app_id)
 
         logger:info("Got game name: " .. game_name)
 
-        -- Apply manual name fix if available
-        local fixed_name = name_fixes[game_name]
-        if fixed_name then
-            logger:info("Applied name fix: " .. fixed_name)
-            game_name = fixed_name
-        end
-
-        -- Sanitize for better search matching
+        -- Sanitize first (removes ™, ®, etc.)
         local search_name = utils.sanitize_game_name(game_name)
         if search_name ~= game_name then
             logger:info("Sanitized to: " .. search_name)
+        end
+
+        -- Apply manual name fix if available
+        local fixed_name = name_fixes[search_name]
+        if fixed_name then
+            logger:info("Applied name fix: " .. fixed_name)
+            search_name = fixed_name
         end
 
         -- Search HLTB
@@ -56,8 +56,7 @@ function GetHltbData(app_id)
                 game_name = match.game_name,
                 comp_main = utils.seconds_to_hours(match.comp_main),
                 comp_plus = utils.seconds_to_hours(match.comp_plus),
-                comp_100 = utils.seconds_to_hours(match.comp_100),
-                comp_all = utils.seconds_to_hours(match.comp_all)
+                comp_100 = utils.seconds_to_hours(match.comp_100)
             }
         })
     end)
