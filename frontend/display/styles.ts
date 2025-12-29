@@ -1,4 +1,4 @@
-export const HLTB_STYLES = `
+const HLTB_STYLES = `
 #hltb-for-millennium {
   position: absolute;
   bottom: 0;

@@ -5,7 +5,6 @@ export interface HltbGameResult {
   comp_main: number | null; // hours
   comp_plus: number | null; // hours
   comp_100: number | null; // hours
-  comp_all: number | null; // hours
 }
 
 // Cache entry for localStorage

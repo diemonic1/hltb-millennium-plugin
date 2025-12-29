@@ -2,7 +2,7 @@ import { log } from '../services/logger';
 import { LIBRARY_SELECTORS } from '../types';
 import { clearCache, getCacheStats } from '../services/cache';
 
-export function logDOMStructure(doc: Document, selector?: string): void {
+function logDOMStructure(doc: Document, selector?: string): void {
   log('=== DOM Structure Debug ===');
   log('Document title:', doc.title);
   log('Body classes:', doc.body?.className);

@@ -41,15 +41,8 @@ export async function fetchHltbData(appId: number): Promise<FetchResult> {
 
   if (cached) {
     const cachedData = cached.entry.notFound ? null : cached.entry.data;
-
-    if (cached.isStale) {
-      log('Stale cache hit for appId:', appId);
-      const refreshPromise = fetchFromBackend(appId);
-      return { data: cachedData, fromCache: true, refreshPromise };
-    } else {
-      log('Cache hit for appId:', appId);
-      return { data: cachedData, fromCache: true, refreshPromise: null };
-    }
+    const refreshPromise = cached.isStale ? fetchFromBackend(appId) : null;
+    return { data: cachedData, fromCache: true, refreshPromise };
   }
 
   const data = await fetchFromBackend(appId);

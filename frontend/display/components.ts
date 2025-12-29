@@ -2,7 +2,7 @@ import type { HltbGameResult } from '../types';
 
 const CONTAINER_ID = 'hltb-for-millennium';
 
-export function formatTime(hours: number | null): string {
+function formatTime(hours: number | null): string {
   if (!hours || hours === 0) return '--';
   if (hours < 1) {
     const mins = Math.round(hours * 60);
@@ -43,33 +43,20 @@ export function createDisplay(doc: Document, data: HltbGameResult): HTMLElement 
 
   const hltbUrl = `https://howlongtobeat.com/game/${data.game_id}`;
 
-  let statsHtml = '';
+  const stats = [
+    { value: data.comp_main, label: 'Main Story' },
+    { value: data.comp_plus, label: 'Main + Extras' },
+    { value: data.comp_100, label: 'Completionist' },
+  ];
 
-  if (data.comp_main && data.comp_main > 0) {
-    statsHtml += `
+  const statsHtml = stats
+    .filter(stat => stat.value && stat.value > 0)
+    .map(stat => `
       <li>
-        <p class="hltb-gametime">${formatTime(data.comp_main)}</p>
-        <p class="hltb-label">Main Story</p>
-      </li>`;
-  }
-
-  if (data.comp_plus && data.comp_plus > 0) {
-    statsHtml += `
-      <li>
-        <p class="hltb-gametime">${formatTime(data.comp_plus)}</p>
-        <p class="hltb-label">Main + Extras</p>
-      </li>`;
-  }
-
-  if (data.comp_100 && data.comp_100 > 0) {
-    statsHtml += `
-      <li>
-        <p class="hltb-gametime">${formatTime(data.comp_100)}</p>
-        <p class="hltb-label">Completionist</p>
-      </li>`;
-  }
-
-  statsHtml += `
+        <p class="hltb-gametime">${formatTime(stat.value)}</p>
+        <p class="hltb-label">${stat.label}</p>
+      </li>`)
+    .join('') + `
     <li>
       <button class="hltb-details-btn">View Details</button>
     </li>`;
