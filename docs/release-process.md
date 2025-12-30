@@ -6,7 +6,7 @@ This document describes how to release the plugin to the Millennium Plugin Datab
 
 Before submitting:
 - Plugin builds successfully with `npm run build`
-- `plugin.json` has correct name, version, and description
+- `plugin.json` and `package.json` have matching version numbers
 - All changes are committed and pushed to the main branch
 
 ## Initial Submission
@@ -56,16 +56,21 @@ The PR will automatically reflect the new submodule commit.
 
 When releasing a new version:
 
-1. Update version in `plugin.json`
+1. Update version in both `plugin.json` and `package.json` (must match)
 
-2. Build and test the plugin:
+2. Build and test the plugin locally:
    ```bash
    npm run build
    ```
 
 3. Commit and push changes to the plugin repository
 
-4. Update the submodule in PluginDatabase:
+4. Run the "Create Release" GitHub Action:
+   - Go to Actions > Create Release > Run workflow
+   - Enter the version number (must match plugin.json and package.json)
+   - The workflow validates versions match, builds, and creates a GitHub release
+
+5. Update the submodule in PluginDatabase:
    ```bash
    cd PluginDatabase/plugins/hltb-millennium-plugin
    git pull origin main
@@ -75,9 +80,9 @@ When releasing a new version:
    git push
    ```
 
-5. Open a new Pull Request to `SteamClientHomebrew/PluginDatabase`
+6. Open a new Pull Request to `SteamClientHomebrew/PluginDatabase`
 
-6. Each update requires maintainer review before reaching users
+7. Each update requires maintainer review before reaching users
 
 ## Notes
 
