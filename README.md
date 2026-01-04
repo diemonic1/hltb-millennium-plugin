@@ -44,10 +44,12 @@ Once installed, HLTB data automatically appears on game pages in your Steam libr
 
 Access settings via Steam menu > Millennium Library Manger > HLTB for Steam.
 
-- Horizontal Offset (px): Shifts the HLTB box left from the right edge.
-  - Useful to avoid covering Steam UI elements like the "done" button when adjusting custom game logo position.
-- Show View Details Link: Toggle the link to the HLTB game page on or off.
+- Align to Right (default = true): Position the box on the right side of the header. Disable for left side.
+- Horizontal Offset (default = 0): Distance offset from the aligned edge.
+- Show View Details Link (default = true): Toggle the link to the HLTB game page on or off.
 - Cache Statistics / Clear Cache: View or clear locally cached HLTB data.
+
+The position alignment and offset features are intended to avoid covering Steam UI elements like the custom game logo position "done" button.
 
 ## Known Limitations
 

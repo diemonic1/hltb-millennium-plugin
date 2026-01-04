@@ -27,8 +27,12 @@ export function createDisplay(
 ): HTMLElement {
   const container = doc.createElement('div');
   container.id = CONTAINER_ID;
-  if (settings.horizontalOffset > 0) {
+  if (settings.alignRight) {
     container.style.right = `${settings.horizontalOffset}px`;
+    container.style.left = 'auto';
+  } else {
+    container.style.left = `${settings.horizontalOffset}px`;
+    container.style.right = 'auto';
   }
 
   const stats = [
@@ -49,11 +53,11 @@ export function createDisplay(
   let actionHtml = '';
   if (data === undefined) {
     // Loading state
-    actionHtml = `<li><span class="hltb-status">Loading...</span></li>`;
+    actionHtml = `<li><span class="hltb-label">Loading...</span></li>`;
   } else if (!data.game_id) {
     // Not found - show search link
     actionHtml = settings.showViewDetails
-      ? `<li><button class="hltb-search-btn">Search HLTB</button></li>`
+      ? `<li><button class="hltb-details-btn">Search HLTB</button></li>`
       : '';
   } else {
     // Found - show view details button
@@ -68,18 +72,19 @@ export function createDisplay(
     </div>
   `;
 
-  // Attach click handlers
-  if (data?.game_id && settings.showViewDetails) {
+  // Attach click handler
+  if (data && settings.showViewDetails) {
     const button = container.querySelector('.hltb-details-btn');
-    button?.addEventListener('click', () => {
-      window.open(`steam://openurl_external/https://howlongtobeat.com/game/${data.game_id}`);
-    });
-  } else if (data && !data.game_id && settings.showViewDetails) {
-    const button = container.querySelector('.hltb-search-btn');
-    button?.addEventListener('click', () => {
-      const query = encodeURIComponent(data.searched_name);
-      window.open(`steam://openurl_external/https://howlongtobeat.com/?q=${query}`);
-    });
+    if (data.game_id) {
+      button?.addEventListener('click', () => {
+        window.open(`steam://openurl_external/https://howlongtobeat.com/game/${data.game_id}`);
+      });
+    } else {
+      button?.addEventListener('click', () => {
+        const query = encodeURIComponent(data.searched_name);
+        window.open(`steam://openurl_external/https://howlongtobeat.com/?q=${query}`);
+      });
+    }
   }
 
   return container;

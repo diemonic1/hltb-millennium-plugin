@@ -15,11 +15,13 @@ const SettingsContent = () => {
   const [message, setMessage] = useState('');
   const [horizontalOffset, setHorizontalOffset] = useState('0');
   const [showViewDetails, setShowViewDetails] = useState(true);
+  const [alignRight, setAlignRight] = useState(true);
 
   useEffect(() => {
     const settings = getSettings();
     setHorizontalOffset(String(settings.horizontalOffset));
     setShowViewDetails(settings.showViewDetails);
+    setAlignRight(settings.alignRight);
   }, []);
 
   const onOffsetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,6 +37,12 @@ const SettingsContent = () => {
   const onShowViewDetailsChange = (checked: boolean) => {
     setShowViewDetails(checked);
     saveSettings({ ...getSettings(), showViewDetails: checked });
+    refreshDisplay();
+  };
+
+  const onAlignRightChange = (checked: boolean) => {
+    setAlignRight(checked);
+    saveSettings({ ...getSettings(), alignRight: checked });
     refreshDisplay();
   };
 
@@ -57,7 +65,15 @@ const SettingsContent = () => {
 
   return (
     <>
-      <Field label="Horizontal Offset (px)" description="Distance from right edge. Default: 0" bottomSeparator="standard">
+      <Field label="Align to Right" description="Position on right side of header. Disable for left side." bottomSeparator="standard">
+        <input
+          type="checkbox"
+          checked={alignRight}
+          onChange={(e) => onAlignRightChange(e.target.checked)}
+          style={{ width: '20px', height: '20px' }}
+        />
+      </Field>
+      <Field label="Horizontal Offset (px)" description="Distance from edge. Default: 0" bottomSeparator="standard">
         <input
           type="number"
           min={0}

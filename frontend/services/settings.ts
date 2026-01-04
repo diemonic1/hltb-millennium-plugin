@@ -1,6 +1,7 @@
 export interface PluginSettings {
   horizontalOffset: number;
   showViewDetails: boolean;
+  alignRight: boolean;
 }
 
 const STORAGE_KEY = 'hltb-millennium-settings';
@@ -8,6 +9,7 @@ const STORAGE_KEY = 'hltb-millennium-settings';
 const DEFAULT_SETTINGS: PluginSettings = {
   horizontalOffset: 0,
   showViewDetails: true,
+  alignRight: true,
 };
 
 export function getSettings(): PluginSettings {
