@@ -2,9 +2,9 @@ import type { LibrarySelectors } from '../types';
 import { log } from '../services/logger';
 import { fetchHltbData } from '../services/hltbApi';
 import { getCache } from '../services/cache';
+import { getSettings } from '../services/settings';
 import { detectGamePage } from './detector';
 import {
-  createLoadingDisplay,
   createDisplay,
   getExistingDisplay,
   removeExistingDisplay,
@@ -13,16 +13,33 @@ import { injectStyles } from '../display/styles';
 
 let currentAppId: number | null = null;
 let processingAppId: number | null = null;
+let currentDoc: Document | null = null;
 let observer: MutationObserver | null = null;
 
 export function resetState(): void {
   currentAppId = null;
   processingAppId = null;
+  currentDoc = null;
+}
+
+export function refreshDisplay(): void {
+  if (!currentDoc || !currentAppId) return;
+
+  const existing = getExistingDisplay(currentDoc);
+  if (!existing) return;
+
+  const cached = getCache(currentAppId);
+  const data = cached?.entry?.data;
+  if (!data) return;
+
+  const settings = getSettings();
+  existing.replaceWith(createDisplay(currentDoc, settings, data));
 }
 
 async function handleGamePage(doc: Document, selectors: LibrarySelectors): Promise<void> {
   const gamePage = detectGamePage(doc, selectors);
   if (!gamePage) {
+    // Silent return - game page not detected (common during DOM transitions)
     return;
   }
 
@@ -43,15 +60,19 @@ async function handleGamePage(doc: Document, selectors: LibrarySelectors): Promi
   // Set processing lock before any DOM modifications
   processingAppId = appId;
   currentAppId = appId;
+  currentDoc = doc;
   log('Found game page for appId:', appId);
+
+  const settings = getSettings();
 
   try {
     removeExistingDisplay(doc);
 
     // Ensure container has relative positioning for absolute child
     container.style.position = 'relative';
-    container.appendChild(createLoadingDisplay(doc));
+    container.appendChild(createDisplay(doc, settings)); // undefined data = loading state
 
+    log('Fetching HLTB data for appId:', appId);
     const result = await fetchHltbData(appId);
 
     const updateDisplayForApp = (targetAppId: number) => {
@@ -61,8 +82,9 @@ async function handleGamePage(doc: Document, selectors: LibrarySelectors): Promi
       const cached = getCache(targetAppId);
       const data = cached?.entry?.data;
 
-      if (data && (data.comp_main || data.comp_plus || data.comp_100)) {
-        existing.replaceWith(createDisplay(doc, data));
+      if (data) {
+        log('Updating display:', data.game_name || data.searched_name);
+        existing.replaceWith(createDisplay(doc, settings, data));
         return true;
       }
       return false;
@@ -75,9 +97,7 @@ async function handleGamePage(doc: Document, selectors: LibrarySelectors): Promi
       return;
     }
 
-    if (updateDisplayForApp(appId)) {
-      log('Display updated for appId:', appId);
-    }
+    updateDisplayForApp(appId);
 
     // Handle background refresh for stale data
     if (result.refreshPromise) {

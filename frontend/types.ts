@@ -1,10 +1,11 @@
 // HLTB game data from backend
 export interface HltbGameResult {
-  game_id: number;
-  game_name: string;
-  comp_main: number | null; // hours
-  comp_plus: number | null; // hours
-  comp_100: number | null; // hours
+  searched_name: string;       // Always present - the Steam name we searched for
+  game_id?: number;            // Only present if HLTB match found
+  game_name?: string;          // HLTB's name for the game (only if found)
+  comp_main?: number | null;   // hours
+  comp_plus?: number | null;   // hours
+  comp_100?: number | null;    // hours
 }
 
 // Cache entry for localStorage

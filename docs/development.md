@@ -35,6 +35,11 @@ Start Steam with `-dev` flag for DevTools and hot reload:
 steam -dev
 ```
 
+For example with the default Windows path, from Powershell run:
+```
+& "C:\Program Files (x86)\Steam\steam.exe" -dev
+```
+
 For Big Picture testing:
 ```
 steam -gamepadui -dev

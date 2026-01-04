@@ -1,17 +1,42 @@
-import { useState } from 'react';
-import { definePlugin, Millennium, IconsModule, Field, DialogButton } from '@steambrew/client';
+import { useState, useEffect } from 'react';
+import { definePlugin, Millennium, IconsModule, Field, DialogButton, TextField } from '@steambrew/client';
 import { log } from './services/logger';
 import { LIBRARY_SELECTORS } from './types';
-import { setupObserver, resetState, disconnectObserver } from './injection/observer';
+import { setupObserver, resetState, disconnectObserver, refreshDisplay } from './injection/observer';
 import { exposeDebugTools, removeDebugTools } from './debug/tools';
 import { removeStyles } from './display/styles';
 import { removeExistingDisplay } from './display/components';
 import { clearCache, getCacheStats } from './services/cache';
+import { getSettings, saveSettings } from './services/settings';
 
 let currentDocument: Document | undefined;
 
 const SettingsContent = () => {
   const [message, setMessage] = useState('');
+  const [horizontalOffset, setHorizontalOffset] = useState('0');
+  const [showViewDetails, setShowViewDetails] = useState(true);
+
+  useEffect(() => {
+    const settings = getSettings();
+    setHorizontalOffset(String(settings.horizontalOffset));
+    setShowViewDetails(settings.showViewDetails);
+  }, []);
+
+  const onOffsetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setHorizontalOffset(value);
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue >= 0) {
+      saveSettings({ ...getSettings(), horizontalOffset: numValue });
+      refreshDisplay();
+    }
+  };
+
+  const onShowViewDetailsChange = (checked: boolean) => {
+    setShowViewDetails(checked);
+    saveSettings({ ...getSettings(), showViewDetails: checked });
+    refreshDisplay();
+  };
 
   const onCacheStats = () => {
     const stats = getCacheStats();
@@ -32,6 +57,22 @@ const SettingsContent = () => {
 
   return (
     <>
+      <TextField
+        label="Horizontal Offset (px)"
+        description="Distance from right edge. Default: 0"
+        value={horizontalOffset}
+        onChange={onOffsetChange}
+        mustBeNumeric
+        rangeMin={0}
+      />
+      <Field label="Show View Details Link" description="Display link to HLTB game page" bottomSeparator="standard">
+        <input
+          type="checkbox"
+          checked={showViewDetails}
+          onChange={(e) => onShowViewDetailsChange(e.target.checked)}
+          style={{ width: '20px', height: '20px' }}
+        />
+      </Field>
       <Field label="Cache Statistics" bottomSeparator="standard">
         <DialogButton onClick={onCacheStats} style={{ padding: '8px 16px' }}>View Stats</DialogButton>
       </Field>

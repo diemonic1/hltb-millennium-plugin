@@ -22,14 +22,22 @@ async function fetchFromBackend(appId: number): Promise<HltbGameResult | null> {
     }
 
     const result: BackendResponse = JSON.parse(resultJson);
+    log('Backend response:', result);
 
-    if (!result.success || !result.data) {
+    if (!result.success) {
       log('Backend error:', result.error);
       return null;
     }
 
-    setCache(appId, result.data);
-    return result.data;
+    // Data is always present on success (may or may not have game_id)
+    if (result.data) {
+      log('Caching data for appId:', appId, result.data);
+      setCache(appId, result.data);
+      return result.data;
+    }
+
+    log('No data in response for appId:', appId);
+    return null;
   } catch (e) {
     logError('Backend call error for appId:', appId, e);
     return null;
@@ -42,6 +50,7 @@ export async function fetchHltbData(appId: number): Promise<FetchResult> {
   if (cached) {
     const cachedData = cached.entry.notFound ? null : cached.entry.data;
     const refreshPromise = cached.isStale ? fetchFromBackend(appId) : null;
+    log('Cache hit:', appId, cached.isStale ? '(stale)' : '(fresh)');
     return { data: cachedData, fromCache: true, refreshPromise };
   }
 

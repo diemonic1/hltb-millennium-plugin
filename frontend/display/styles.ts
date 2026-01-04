@@ -43,7 +43,8 @@ const HLTB_STYLES = `
   opacity: 0.7;
 }
 
-.hltb-details-btn {
+.hltb-details-btn,
+.hltb-search-btn {
   background: transparent;
   border: none;
   color: #1a9fff;
@@ -54,8 +55,18 @@ const HLTB_STYLES = `
   padding: 5px 10px;
 }
 
-.hltb-details-btn:hover {
+.hltb-details-btn:hover,
+.hltb-search-btn:hover {
   color: #ffffff;
+}
+
+.hltb-status {
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  opacity: 0.7;
+  padding: 5px 10px;
 }
 `;
 

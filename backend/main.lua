@@ -43,7 +43,10 @@ function GetHltbData(app_id)
         local match = hltb.search_best_match(search_name, app_id)
         if not match then
             logger:info("No HLTB results for: " .. search_name)
-            return json.encode({ success = false, error = "No HLTB results" })
+            return json.encode({
+                success = true,
+                data = { searched_name = search_name }
+            })
         end
 
         local similarity = utils.calculate_similarity(search_name, match.game_name)
@@ -52,6 +55,7 @@ function GetHltbData(app_id)
         return json.encode({
             success = true,
             data = {
+                searched_name = search_name,
                 game_id = match.game_id,
                 game_name = match.game_name,
                 comp_main = utils.seconds_to_hours(match.comp_main),
