@@ -27,4 +27,14 @@ return {
     ["Meadow - A Shelter Game"] = "Meadow",
     ["Warhammer 40,000: Dawn of War II: Retribution"] = "Warhammer 40,000: Dawn of War II - Retribution",
     ["STAR WARS Battlefront II (Classic, 2005)"] = "STAR WARS Battlefront II"
+    ["Marvel’s Spider-Man Remastered"] = "Marvel's Spider-Man Remastered",
+    ["Disco Elysium - The Final Cut"] = "Disco Elysium",
+    ["Lewd Girls, Leave Me Alone! I Just Want to Play Video Games and Watch Anime! ~ Hentai Edition"] = "Lewd Girls, Leave Me Alone! I Just Want to Play Video Games and Watch Anime! Hentai Edition",
+    ["PICO PARK:Classic Edition"] = "PICO PARK: Classic Edition",
+    ["Ranch Simulator: Build, Hunt, Farm"] = "Ranch Simulator",
+    ["Sea of Thieves: 2025 Edition"] = "Sea of Thieves",
+    ["Stardew Valley"] = "Stardew Valley",
+    ["Baldur's Gate 3"] = "Baldur's Gate 3",
+    ["Vampire Survivors"] = "Vampire Survivors",
+    ["The Deed: Dynasty"] = "The Deed: Dynasty",
 }
