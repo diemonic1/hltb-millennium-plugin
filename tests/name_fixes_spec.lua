@@ -70,4 +70,19 @@ describe("name_fixes.lua", function()
         assert.are_equal(0, #duplicates,
             "Duplicate keys found: " .. table.concat(duplicates, ", "))
     end)
+
+    it("has keys in alphabetical order", function()
+        assert.is_not_nil(file_content, "Could not read name_fixes.lua")
+
+        local keys = {}
+        for key in file_content:gmatch('%[%"([^"]+)%"%]%s*=') do
+            table.insert(keys, key)
+        end
+
+        for i = 2, #keys do
+            local prev, curr = keys[i-1], keys[i]
+            assert.is_true(prev:lower() <= curr:lower(),
+                "Keys not sorted: \"" .. prev .. "\" should come after \"" .. curr .. "\"")
+        end
+    end)
 end)

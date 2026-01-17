@@ -66,8 +66,9 @@ Always present this exact format before asking for user confirmation:
 ### Adding the mapping:
 1. Sanitize the Steam name (see rules below)
 2. Read `backend/name_fixes.lua`
-3. Add the new mapping before the closing `}`, using the sanitized Steam name as the key
-4. Report the mapping that was added
+3. Find the correct alphabetical position (case-insensitive) for the new key
+4. Insert the new mapping at that position to maintain sorted order
+5. Report the mapping that was added
 
 ## Sanitization Rules
 
@@ -95,4 +96,4 @@ For app ID 1004640:
    - **HLTB name:** "Final Fantasy Tactics: The Ivalice Chronicles"
    - **HLTB page:** https://howlongtobeat.com/game/169173
 6. User confirms mapping
-7. Add to name_fixes.lua: `["FINAL FANTASY TACTICS - The Ivalice Chronicles"] = "Final Fantasy Tactics: The Ivalice Chronicles"`
+7. Insert into name_fixes.lua in alphabetical order: `["FINAL FANTASY TACTICS - The Ivalice Chronicles"] = "Final Fantasy Tactics: The Ivalice Chronicles"`
