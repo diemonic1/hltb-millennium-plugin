@@ -15,6 +15,9 @@ local M = {}
 M.TOKEN_TTL = 300    -- Auth token cache duration in seconds
 M.SEARCH_SIZE = 20   -- Number of results to request per search
 
+-- Exposed for testing; defaults to real http module
+M._http = http
+
 -- Auth token cache
 local cached_token = nil
 local token_expires_at = 0
@@ -293,7 +296,7 @@ function M.fetch_steam_import(steam_user_id)
         ["Referer"] = endpoints.REFERER_HEADER
     }
 
-    local response, err = http.request(url, {
+    local response, err = M._http.request(url, {
         method = "POST",
         headers = headers,
         data = payload,
@@ -309,12 +312,12 @@ function M.fetch_steam_import(steam_user_id)
     end
 
     local success, data = pcall(json.decode, response.body)
-    if not success or not data then
+    if not success or type(data) ~= "table" then
         return nil, "Invalid JSON response"
     end
 
     if data.error then
-        return nil, data.error
+        return nil, "HLTB API error: " .. data.error .. " (profile may be private)"
     end
 
     if type(data.games) ~= "table" then
@@ -354,7 +357,7 @@ function M.fetch_game_by_id(game_id)
         ["referer"] = endpoints.REFERER_HEADER
     }
 
-    local response, err = http.get(url, {
+    local response, err = M._http.get(url, {
         headers = headers,
         timeout = endpoints.TIMEOUT
     })
@@ -368,7 +371,7 @@ function M.fetch_game_by_id(game_id)
     end
 
     local success, data = pcall(json.decode, response.body)
-    if not success or not data then
+    if not success or type(data) ~= "table" then
         return nil, "Invalid JSON response"
     end
 
