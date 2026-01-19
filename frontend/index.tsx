@@ -12,6 +12,7 @@ import { initializeIdCache } from './services/hltbApi';
 import { getIdCacheStats, clearIdCache } from './services/hltbIdCache';
 
 let currentDocument: Document | undefined;
+let initializedForUserId: string | null = null;
 
 const SettingsContent = () => {
   const [message, setMessage] = useState('');
@@ -149,10 +150,12 @@ export default definePlugin(() => {
 
     // Initialize ID cache in background (non-blocking)
     // Uses HLTB's Steam import API to get steam_id -> hltb_id mappings
+    // Skip if already successfully initialized for this user ID
     const steamUserId = (window as any).App?.m_CurrentUser?.strSteamID;
-    if (steamUserId) {
+    if (steamUserId && steamUserId !== initializedForUserId) {
       initializeIdCache(steamUserId).then((success) => {
         if (success) {
+          initializedForUserId = steamUserId;
           log('ID cache initialized successfully');
         }
       });
