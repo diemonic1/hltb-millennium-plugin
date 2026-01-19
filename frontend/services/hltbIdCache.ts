@@ -5,8 +5,8 @@
  * import API. This allows direct HLTB lookups by ID, bypassing unreliable
  * name-based search.
  *
- * The cache is populated at startup if the user's Steam profile is public.
- * Mappings are stored per-user and expire after 7 days.
+ * The cache is refreshed on every Steam startup (single low-cost API call).
+ * This ensures new library additions get ID mappings immediately.
  *
  * Storage key: 'hltb-millennium-id-cache' in localStorage
  */
@@ -28,7 +28,6 @@ interface IdCacheData {
 }
 
 const CACHE_KEY = 'hltb-millennium-id-cache';
-const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function getHltbId(steamAppId: number): number | null {
   try {
@@ -67,31 +66,6 @@ export function setIdCache(mappings: Array<{ steam_id: number; hltb_id: number }
   }
 }
 
-export function isIdCacheValid(steamUserId: string): boolean {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return false;
-
-    const cache: IdCacheData = JSON.parse(raw);
-
-    // Check if same user
-    if (cache.metadata.steamUserId !== steamUserId) {
-      log('ID cache user mismatch, needs refresh');
-      return false;
-    }
-
-    // Check if not expired
-    const age = Date.now() - cache.metadata.timestamp;
-    if (age > CACHE_DURATION) {
-      log('ID cache expired, needs refresh');
-      return false;
-    }
-
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
 
 export function clearIdCache(): void {
   try {

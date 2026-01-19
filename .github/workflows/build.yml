@@ -34,7 +34,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Validate version matches plugin.json, package.json, and package-lock.json
         run: |

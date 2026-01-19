@@ -2,7 +2,7 @@ import { callable } from '@steambrew/client';
 import type { HltbGameResult, FetchResult } from '../types';
 import { log, logError } from './logger';
 import { getCache, setCache } from './cache';
-import { getHltbId, setIdCache, isIdCacheValid } from './hltbIdCache';
+import { getHltbId, setIdCache } from './hltbIdCache';
 
 interface BackendResponse {
   success: boolean;
@@ -82,17 +82,13 @@ export async function fetchHltbData(appId: number): Promise<FetchResult> {
 }
 
 // Initialize ID cache from Steam import (for public profiles)
+// Always fetches fresh data - it's a single low-cost API call that ensures
+// new library additions get ID mappings immediately.
 // Returns true if cache was populated, false otherwise
 export async function initializeIdCache(steamUserId: string): Promise<boolean> {
   if (!steamUserId) {
     log('No Steam user ID provided, skipping ID cache init');
     return false;
-  }
-
-  // Check if cache is still valid for this user
-  if (isIdCacheValid(steamUserId)) {
-    log('ID cache already valid for user:', steamUserId);
-    return true;
   }
 
   try {
