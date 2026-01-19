@@ -39,7 +39,7 @@ return {
     ["Rock of Ages 2: Bigger & Boulder"] = "Rock of Ages II: Bigger & Boulder",
     ["Sea of Thieves: 2025 Edition"] = "Sea of Thieves",
     ["SEGA Mega Drive and Genesis Classics"] = "SEGA Genesis Classics Collection",
-    ["Sid Meier's Civilization® VI"] = "Sid Meiers Civilization VI",
+    ["Sid Meier’s Civilization® VI"] = "Sid Meier's Civilization VI",
     ["Space Pilgrim Episode II: Epsilon Indi"] = "Space Pilgrim: Episode Two - Epsilon Indi",
     ["STAR WARS Battlefront II (Classic, 2005)"] = "STAR WARS Battlefront II",
     ["Total War: NAPOLEON – Definitive Edition"] = "Napoleon: Total War",
