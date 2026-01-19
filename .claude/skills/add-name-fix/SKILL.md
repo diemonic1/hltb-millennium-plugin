@@ -64,11 +64,21 @@ Always present this exact format before asking for user confirmation:
 - **HLTB page:** {URL}
 ```
 
-### Adding the mapping:
+### Adding the mapping (single entry):
 1. Read `backend/name_fixes.lua`
 2. Find the correct position to maintain numerical order (ascending by AppID)
 3. Insert the new mapping: `[{APPID}] = "{HLTB name}",`
 4. Report the mapping that was added
+
+## Bulk Additions
+
+When adding many entries at once (e.g., from discover-name-fixes.js output):
+
+1. Append all new entries to the end of the file (before the closing `}`)
+2. Don't worry about sort order or duplicates
+3. Run `/name-fix-review` to sort numerically and remove duplicates
+
+This is much faster than inserting each entry in the correct position.
 
 ## Example Workflow
 

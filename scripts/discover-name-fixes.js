@@ -40,6 +40,35 @@ const HLTB_API_URL = 'https://howlongtobeat.com/api/steam/getSteamImportData';
 const LEVENSHTEIN_THRESHOLD = 0.2;
 
 /**
+ * Simulate HLTB's search matching behavior.
+ *
+ * HLTB uses greedy exact/substring matching, not fuzzy matching.
+ * "Cyberpunk" finds "Cyberpunk 2077" but "Cyberpunk1" does not.
+ *
+ * Returns true if the search term would likely find the target on HLTB.
+ */
+function wouldHLTBMatch(searchTerm, targetName) {
+  // Normalize: lowercase, collapse whitespace
+  const normalize = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+
+  const search = normalize(searchTerm);
+  const target = normalize(targetName);
+
+  // Direct substring match
+  if (target.includes(search)) {
+    return true;
+  }
+
+  // Word-based match: all words in search appear in target
+  const searchWords = search.split(' ').filter(w => w.length > 0);
+  const targetWords = target.split(' ');
+
+  return searchWords.every(sw =>
+    targetWords.some(tw => tw.includes(sw) || sw.includes(tw))
+  );
+}
+
+/**
  * Detect available Lua interpreter (prefers luajit)
  */
 function detectLua() {
@@ -222,7 +251,7 @@ async function main() {
     }
   }
 
-  const fixValidation = { correct: [], deviations: [], notInLibrary: [] };
+  const fixValidation = { correct: [], deviations: [], wouldNotMatch: [], notInLibrary: [] };
 
   if (fixesToValidate.length > 0) {
     const fixResults = processGamesBatch(luaCmd, fixesToValidate);
@@ -231,9 +260,13 @@ async function main() {
       const fix = fixesToValidate[i];
       const result = fixResults[i];
       const distance = result.dist_sanitized;
-      const matches = distance === 0 || isWithinThreshold(distance, fix.steam_name, fix.hltb_name);
+      const levenshteinOk = distance === 0 || isWithinThreshold(distance, fix.steam_name, fix.hltb_name);
+      const substringOk = wouldHLTBMatch(fix.steam_name, fix.hltb_name);
 
-      if (matches) {
+      if (!substringOk) {
+        // Our fix wouldn't find the game via HLTB's substring search
+        fixValidation.wouldNotMatch.push({ appId: fix.steam_id, fixedName: fix.steam_name, hltbName: fix.hltb_name, distance });
+      } else if (levenshteinOk) {
         fixValidation.correct.push({ appId: fix.steam_id, fixedName: fix.steam_name, hltbName: fix.hltb_name, distance });
       } else {
         fixValidation.deviations.push({ appId: fix.steam_id, fixedName: fix.steam_name, hltbName: fix.hltb_name, distance });
@@ -249,8 +282,18 @@ async function main() {
   }
 
   console.log(`Matches API hltb_name: ${fixValidation.correct.length}`);
+  console.log(`Would not match (substring check failed): ${fixValidation.wouldNotMatch.length}`);
   console.log(`Deviations from API: ${fixValidation.deviations.length}`);
   console.log(`Not in library: ${fixValidation.notInLibrary.length}`);
+
+  if (fixValidation.wouldNotMatch.length > 0) {
+    console.log('\nWOULD NOT MATCH (fix may not find the game):');
+    for (const fix of fixValidation.wouldNotMatch) {
+      console.log(`  [${fix.appId}]`);
+      console.log(`    Our fix:       "${fix.fixedName}"`);
+      console.log(`    API hltb_name: "${fix.hltbName}"`);
+    }
+  }
 
   if (fixValidation.deviations.length > 0) {
     console.log('\nDEVIATIONS (may be false positives - see note above):');
@@ -270,15 +313,25 @@ async function main() {
   console.log('='.repeat(50) + '\n');
 
   // Find games where neither sanitize nor simplify matches
+  // Uses both Levenshtein distance AND HLTB's substring matching simulation
   const needsFix = [];
   for (let i = 0; i < gamesToProcess.length; i++) {
     const game = gamesToProcess[i];
     const result = processed[i];
 
-    const sanitizedMatches = result.dist_sanitized === 0 || isWithinThreshold(result.dist_sanitized, result.sanitized, game.hltb_name);
-    const simplifiedMatches = result.dist_simplified === 0 || isWithinThreshold(result.dist_simplified, result.simplified, game.hltb_name);
+    // Levenshtein check (fuzzy similarity)
+    const sanitizedLevenshtein = result.dist_sanitized === 0 || isWithinThreshold(result.dist_sanitized, result.sanitized, game.hltb_name);
+    const simplifiedLevenshtein = result.dist_simplified === 0 || isWithinThreshold(result.dist_simplified, result.simplified, game.hltb_name);
 
-    if (!sanitizedMatches && !simplifiedMatches) {
+    // HLTB substring matching simulation
+    const sanitizedSubstring = wouldHLTBMatch(result.sanitized, game.hltb_name);
+    const simplifiedSubstring = wouldHLTBMatch(result.simplified, game.hltb_name);
+
+    // Need fix if BOTH checks fail for BOTH sanitized and simplified
+    const sanitizedOk = sanitizedLevenshtein && sanitizedSubstring;
+    const simplifiedOk = simplifiedLevenshtein && simplifiedSubstring;
+
+    if (!sanitizedOk && !simplifiedOk) {
       needsFix.push({
         steamId: game.steam_id,
         steamName: game.steam_name,
@@ -287,6 +340,8 @@ async function main() {
         simplified: result.simplified,
         distSanitized: result.dist_sanitized,
         distSimplified: result.dist_simplified,
+        sanitizedSubstringOk: sanitizedSubstring,
+        simplifiedSubstringOk: simplifiedSubstring,
       });
     }
   }
@@ -312,9 +367,9 @@ async function main() {
     for (const fix of needsFix) {
       console.log(`AppID ${fix.steamId}:`);
       console.log(`  Steam:      "${fix.steamName}"`);
-      console.log(`  Sanitized:  "${fix.sanitized}" (dist: ${fix.distSanitized})`);
+      console.log(`  Sanitized:  "${fix.sanitized}" (dist: ${fix.distSanitized}, substr: ${fix.sanitizedSubstringOk ? 'yes' : 'no'})`);
       if (fix.simplified !== fix.sanitized) {
-        console.log(`  Simplified: "${fix.simplified}" (dist: ${fix.distSimplified})`);
+        console.log(`  Simplified: "${fix.simplified}" (dist: ${fix.distSimplified}, substr: ${fix.simplifiedSubstringOk ? 'yes' : 'no'})`);
       }
       console.log(`  HLTB:       "${fix.hltbName}"`);
       console.log();
@@ -329,7 +384,7 @@ async function main() {
   console.log('='.repeat(50) + '\n');
 
   console.log(`Total games analyzed: ${allGames.size}`);
-  console.log(`Existing name_fixes: ${existingFixes.size} (${fixValidation.correct.length} match API, ${fixValidation.deviations.length} deviations)`);
+  console.log(`Existing name_fixes: ${existingFixes.size} (${fixValidation.correct.length} ok, ${fixValidation.wouldNotMatch.length} would not match, ${fixValidation.deviations.length} deviations)`);
   console.log(`Games needing new fixes: ${needsFix.length}`);
 }
 
