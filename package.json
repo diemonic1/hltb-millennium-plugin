@@ -8,10 +8,10 @@
     "build": "millennium-ttc --build prod"
   },
   "dependencies": {
-    "@steambrew/client": "^5.5.3",
     "@steambrew/api": "^5.5.3",
-    "@steambrew/webkit": "^5.5.3",
-    "@steambrew/ttc": "^2.7.3"
+    "@steambrew/client": "^5.5.3",
+    "@steambrew/ttc": "^2.7.3",
+    "@steambrew/webkit": "^5.5.3"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

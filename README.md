@@ -35,10 +35,16 @@ Once installed, HLTB data automatically appears on game pages in your Steam libr
 
 ## How It Works
 
-1. When you view a game page, the plugin detects the Steam App ID
-2. The Lua backend queries the Steam API to get the game name
-3. It searches How Long To Beat for matching games
+On startup, if your Steam profile is public, the plugin fetches your library from HLTB's Steam import API. This provides a direct mapping from Steam app IDs to HLTB game IDs, which is more reliable than name-based search and avoids issues with mismatched game names.
+
+When you view a game page:
+
+1. The plugin detects the Steam App ID from the page
+2. If a cached HLTB ID exists (from the Steam import), it fetches data directly by ID
+3. Otherwise, it falls back to name-based search: queries Steam for the game name, applies fixes, then searches HLTB
 4. Results are cached locally and displayed on the game header
+
+If your Steam profile is private, the plugin will still work using name-based search but it may be less reliable.
 
 ## Settings
 

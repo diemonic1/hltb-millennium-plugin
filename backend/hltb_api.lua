@@ -262,6 +262,140 @@ function M.fetch_game_data(game_id)
     return game_data
 end
 
+-- Fetch Steam import data from HLTB's Steam integration API.
+--
+-- HLTB provides an endpoint that returns all games in a user's Steam library
+-- along with their corresponding HLTB game IDs. This gives us a reliable
+-- mapping without needing to do fuzzy name matching.
+--
+-- Requires the user's Steam profile to be public. Returns nil if the profile
+-- is private or the request fails.
+--
+-- API endpoint: POST https://howlongtobeat.com/api/steam/getSteamImportData
+-- Returns: Array of game objects with steam_id, hltb_id, and other metadata.
+function M.fetch_steam_import(steam_user_id)
+    if not steam_user_id or steam_user_id == "" then
+        return nil, "No Steam user ID provided"
+    end
+
+    logger:info("Fetching Steam import for user: " .. steam_user_id)
+
+    local url = endpoints.BASE_URL .. "api/steam/getSteamImportData"
+
+    local payload = json.encode({
+        steamUserId = steam_user_id,
+        steamOmitData = 0
+    })
+
+    local headers = {
+        ["Content-Type"] = "application/json",
+        ["User-Agent"] = endpoints.USER_AGENT,
+        ["Referer"] = endpoints.REFERER_HEADER
+    }
+
+    local response, err = http.request(url, {
+        method = "POST",
+        headers = headers,
+        data = payload,
+        timeout = endpoints.TIMEOUT
+    })
+
+    if not response then
+        return nil, "Request failed: " .. (err or "unknown")
+    end
+
+    if response.status ~= 200 then
+        return nil, "HTTP " .. response.status
+    end
+
+    local success, data = pcall(json.decode, response.body)
+    if not success or not data then
+        return nil, "Invalid JSON response"
+    end
+
+    if data.error then
+        return nil, data.error
+    end
+
+    if type(data.games) ~= "table" then
+        return nil, "No games in response (profile may be private)"
+    end
+
+    logger:info("Steam import returned " .. #data.games .. " games")
+    return data.games, nil
+end
+
+-- Fetch game completion times directly by HLTB game ID.
+--
+-- Uses HLTB's NextJS data endpoint to get full game details including
+-- completion times (main, main+extras, completionist).
+--
+-- This is faster and more reliable than name-based search when we already
+-- know the HLTB game ID (e.g., from the Steam import cache).
+--
+-- API endpoint: GET https://howlongtobeat.com/_next/data/{buildId}/game/{gameId}.json
+-- Returns: Normalized game data with game_id, game_name, comp_main, comp_plus, comp_100.
+function M.fetch_game_by_id(game_id)
+    if not game_id then
+        return nil, "No game ID provided"
+    end
+
+    logger:info("Fetching game data for HLTB ID: " .. tostring(game_id))
+
+    local build_id = endpoints.get_build_id()
+    if not build_id then
+        return nil, "Could not get build ID"
+    end
+
+    local url = endpoints.BASE_URL .. "_next/data/" .. build_id .. "/game/" .. game_id .. ".json"
+
+    local headers = {
+        ["User-Agent"] = endpoints.USER_AGENT,
+        ["referer"] = endpoints.REFERER_HEADER
+    }
+
+    local response, err = http.get(url, {
+        headers = headers,
+        timeout = endpoints.TIMEOUT
+    })
+
+    if not response then
+        return nil, "Request failed: " .. (err or "unknown")
+    end
+
+    if response.status ~= 200 then
+        return nil, "HTTP " .. response.status
+    end
+
+    local success, data = pcall(json.decode, response.body)
+    if not success or not data then
+        return nil, "Invalid JSON response"
+    end
+
+    -- Navigate to the game data
+    if type(data.pageProps) ~= "table" or
+       type(data.pageProps.game) ~= "table" or
+       type(data.pageProps.game.data) ~= "table" then
+        return nil, "Unexpected response structure"
+    end
+
+    local game_array = data.pageProps.game.data.game
+    if type(game_array) ~= "table" or #game_array == 0 then
+        return nil, "No game data found"
+    end
+
+    local game = game_array[1]
+
+    -- Return normalized game data matching search result format
+    return {
+        game_id = game.game_id,
+        game_name = game.game_name,
+        comp_main = game.comp_main,
+        comp_plus = game.comp_plus,
+        comp_100 = game.comp_100
+    }, nil
+end
+
 -- Clear cached auth token
 function M.clear_cache()
     cached_token = nil

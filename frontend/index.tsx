@@ -8,6 +8,8 @@ import { removeStyles } from './display/styles';
 import { removeExistingDisplay } from './display/components';
 import { clearCache, getCacheStats } from './services/cache';
 import { getSettings, saveSettings } from './services/settings';
+import { initializeIdCache } from './services/hltbApi';
+import { getIdCacheStats, clearIdCache } from './services/hltbIdCache';
 
 let currentDocument: Document | undefined;
 
@@ -48,19 +50,37 @@ const SettingsContent = () => {
 
   const onCacheStats = () => {
     const stats = getCacheStats();
+    const idStats = getIdCacheStats();
+
+    const parts: string[] = [];
+
+    // Result cache stats
     if (stats.count === 0) {
-      setMessage('Cache is empty');
+      parts.push('Result cache: empty');
     } else {
       const age = stats.oldestTimestamp
         ? Math.round((Date.now() - stats.oldestTimestamp) / (1000 * 60 * 60 * 24))
         : 0;
-      setMessage(`${stats.count} games cached, oldest is ${age} days old`);
+      parts.push(`Result cache: ${stats.count} games, oldest ${age}d`);
     }
+
+    // ID cache stats
+    if (idStats.count === 0) {
+      parts.push('ID cache: empty');
+    } else {
+      const age = idStats.ageMs
+        ? Math.round(idStats.ageMs / (1000 * 60 * 60 * 24))
+        : 0;
+      parts.push(`ID cache: ${idStats.count} mappings, ${age}d old`);
+    }
+
+    setMessage(parts.join(' | '));
   };
 
   const onClearCache = () => {
     clearCache();
-    setMessage('Cache cleared');
+    clearIdCache();
+    setMessage('All caches cleared');
   };
 
   return (
@@ -126,6 +146,17 @@ export default definePlugin(() => {
     currentDocument = doc;
     setupObserver(doc, LIBRARY_SELECTORS);
     exposeDebugTools(doc);
+
+    // Initialize ID cache in background (non-blocking)
+    // Uses HLTB's Steam import API to get steam_id -> hltb_id mappings
+    const steamUserId = (window as any).App?.m_CurrentUser?.strSteamID;
+    if (steamUserId) {
+      initializeIdCache(steamUserId).then((success) => {
+        if (success) {
+          log('ID cache initialized successfully');
+        }
+      });
+    }
   });
 
   return {

@@ -21,6 +21,8 @@ local M = {}
 M.search = api.search
 M.search_best_match = match.search_best_match
 M.get_auth_token = api.get_auth_token
+M.fetch_steam_import = api.fetch_steam_import
+M.fetch_game_by_id = api.fetch_game_by_id
 
 -- Clear all cached values
 function M.clear_cache()

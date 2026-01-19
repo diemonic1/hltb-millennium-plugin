@@ -63,8 +63,8 @@ function M.get_game_name(app_id)
     end
 
     local success, data = pcall(json.decode, response.body)
-    if not success or not data then
-        return nil, "Invalid JSON response"
+    if not success or type(data) ~= "table" then
+        return nil, "Game not found"
     end
 
     return M.parse_response(data)

@@ -105,5 +105,17 @@ describe("steamhunters", function()
             assert.is_nil(name)
             assert.matches("Request failed", err)
         end)
+
+        it("returns error when API returns null for non-existent game", function()
+            sh._http = create_mock_http({
+                ["https://steamhunters.com/api/apps/7363"] = {
+                    status = 200,
+                    body = "null"
+                }
+            })
+            local name, err = sh.get_game_name(7363)
+            assert.is_nil(name)
+            assert.equals("Game not found", err)
+        end)
     end)
 end)

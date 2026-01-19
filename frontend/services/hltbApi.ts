@@ -2,6 +2,7 @@ import { callable } from '@steambrew/client';
 import type { HltbGameResult, FetchResult } from '../types';
 import { log, logError } from './logger';
 import { getCache, setCache } from './cache';
+import { getHltbId, setIdCache, isIdCacheValid } from './hltbIdCache';
 
 interface BackendResponse {
   success: boolean;
@@ -9,12 +10,31 @@ interface BackendResponse {
   data?: HltbGameResult;
 }
 
+interface SteamImportResponse {
+  success: boolean;
+  error?: string;
+  data?: Array<{ steam_id: number; hltb_id: number }>;
+}
+
 const GetHltbData = callable<[{ app_id: number }], string>('GetHltbData');
+const GetHltbDataById = callable<[{ hltb_id: number; app_id: number }], string>('GetHltbDataById');
+const FetchSteamImportRpc = callable<[{ steam_user_id: string }], string>('FetchSteamImport');
 
 async function fetchFromBackend(appId: number): Promise<HltbGameResult | null> {
   try {
-    log('Calling backend for appId:', appId);
-    const resultJson = await GetHltbData({ app_id: appId });
+    // Check if we have a cached HLTB ID for this app
+    const hltbId = getHltbId(appId);
+
+    let resultJson: string;
+
+    if (hltbId) {
+      // Fetch directly by HLTB ID (skips name search)
+      resultJson = await GetHltbDataById({ hltb_id: hltbId, app_id: appId });
+    } else {
+      // Standard path: name-based search
+      log('Calling backend for appId:', appId);
+      resultJson = await GetHltbData({ app_id: appId });
+    }
 
     if (resultJson === undefined || resultJson === null) {
       logError('Backend returned undefined/null for appId:', appId);
@@ -59,4 +79,48 @@ export async function fetchHltbData(appId: number): Promise<FetchResult> {
 
   const data = await fetchFromBackend(appId);
   return { data, fromCache: false, refreshPromise: null };
+}
+
+// Initialize ID cache from Steam import (for public profiles)
+// Returns true if cache was populated, false otherwise
+export async function initializeIdCache(steamUserId: string): Promise<boolean> {
+  if (!steamUserId) {
+    log('No Steam user ID provided, skipping ID cache init');
+    return false;
+  }
+
+  // Check if cache is still valid for this user
+  if (isIdCacheValid(steamUserId)) {
+    log('ID cache already valid for user:', steamUserId);
+    return true;
+  }
+
+  try {
+    log('Fetching Steam import data for user:', steamUserId);
+    const resultJson = await FetchSteamImportRpc({ steam_user_id: steamUserId });
+
+    if (resultJson === undefined || resultJson === null) {
+      log('Steam import returned null');
+      return false;
+    }
+
+    const result: SteamImportResponse = JSON.parse(resultJson);
+
+    if (!result.success) {
+      log('Steam import failed:', result.error);
+      return false;
+    }
+
+    if (!result.data || result.data.length === 0) {
+      log('Steam import returned no mappings (profile may be private)');
+      return false;
+    }
+
+    setIdCache(result.data, steamUserId);
+    log('ID cache initialized with', result.data.length, 'mappings');
+    return true;
+  } catch (e) {
+    logError('ID cache initialization error:', e);
+    return false;
+  }
 }

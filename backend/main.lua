@@ -96,6 +96,100 @@ function GetHltbData(app_id)
     return result
 end
 
+-- Fetch Steam import data from HLTB's Steam integration API.
+--
+-- For users with public Steam profiles, HLTB provides a direct mapping of
+-- Steam app IDs to HLTB game IDs. This is more reliable than name-based
+-- search since it avoids issues with mismatched or localized game names.
+--
+-- Called by frontend at startup to pre-populate the ID cache.
+-- Returns an array of { steam_id, hltb_id } mappings.
+function FetchSteamImport(steam_user_id)
+    local success, result = pcall(function()
+        logger:info("FetchSteamImport called for user: " .. tostring(steam_user_id))
+
+        local games, err = hltb.fetch_steam_import(steam_user_id)
+        if not games then
+            logger:info("Steam import failed: " .. (err or "unknown"))
+            return json.encode({ success = false, error = err or "Unknown error" })
+        end
+
+        -- Extract just the steam_id -> hltb_id mappings
+        local mappings = {}
+        for _, game in ipairs(games) do
+            if game.steam_id and game.hltb_id and game.hltb_id ~= 0 then
+                table.insert(mappings, {
+                    steam_id = game.steam_id,
+                    hltb_id = game.hltb_id
+                })
+            end
+        end
+
+        logger:info("Returning " .. #mappings .. " ID mappings")
+        return json.encode({
+            success = true,
+            data = mappings
+        })
+    end)
+
+    if not success then
+        logger:error("FetchSteamImport error: " .. tostring(result))
+        return json.encode({ success = false, error = tostring(result) })
+    end
+
+    return result
+end
+
+-- Fetch HLTB completion times directly by HLTB game ID.
+--
+-- This is the fast path used when we have a cached ID mapping from the
+-- Steam import. Skips name-based search entirely, guaranteeing the correct
+-- game match.
+--
+-- Still fetches the Steam game name for logging, so we can verify the
+-- mapping is correct in the logs.
+--
+-- Parameters are ordered alphabetically to match Millennium's callable binding.
+function GetHltbDataById(app_id, hltb_id)
+    local success, result = pcall(function()
+        logger:info("GetHltbDataById called for app_id: " .. tostring(app_id))
+
+        -- Get Steam name for logging
+        local game_name, name_err = get_game_name(app_id)
+        if game_name then
+            logger:info("Raw name: " .. game_name)
+        else
+            logger:info("Could not get Steam name: " .. (name_err or "unknown"))
+        end
+
+        local match, err = hltb.fetch_game_by_id(hltb_id)
+        if not match then
+            logger:info("Fetch by ID failed: " .. (err or "unknown"))
+            return json.encode({ success = false, error = err or "Unknown error" })
+        end
+
+        logger:info("Found game: " .. (match.game_name or "unknown"))
+
+        return json.encode({
+            success = true,
+            data = {
+                game_id = match.game_id,
+                game_name = match.game_name,
+                comp_main = utils.seconds_to_hours(match.comp_main),
+                comp_plus = utils.seconds_to_hours(match.comp_plus),
+                comp_100 = utils.seconds_to_hours(match.comp_100)
+            }
+        })
+    end)
+
+    if not success then
+        logger:error("GetHltbDataById error: " .. tostring(result))
+        return json.encode({ success = false, error = tostring(result) })
+    end
+
+    return result
+end
+
 -- Plugin lifecycle
 local function on_load()
     logger:info("HLTB plugin loaded, Millennium " .. millennium.version())
@@ -114,5 +208,7 @@ return {
     on_load = on_load,
     on_frontend_loaded = on_frontend_loaded,
     on_unload = on_unload,
-    GetHltbData = GetHltbData
+    GetHltbData = GetHltbData,
+    FetchSteamImport = FetchSteamImport,
+    GetHltbDataById = GetHltbDataById
 }

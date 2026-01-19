@@ -30,7 +30,40 @@ The search response includes completion times directly:
 
 Note: `profile_steam` (Steam App ID) is only available via the game detail endpoint, not search results.
 
-### Game Matching
+### Steam Import API
+
+HLTB provides an endpoint that returns all games in a user's Steam library along with their HLTB IDs. This bypasses name-based search entirely.
+
+Endpoint: `POST https://howlongtobeat.com/api/steam/getSteamImportData`
+
+Request body:
+```json
+{
+  "steamUserId": "username_or_steam64id",
+  "steamOmitData": 0
+}
+```
+
+Response includes an array of games with:
+- `steam_id` - Steam App ID
+- `hltb_id` - HLTB game ID
+- `steam_name` - Game name on Steam
+- `hltb_name` - Game name on HLTB
+- `hltb_time` - Completion time in seconds
+
+Requires the Steam profile to be public. Returns null for private profiles.
+
+### Game Data by ID
+
+When we have an HLTB ID (from Steam import cache), we can fetch game data directly:
+
+Endpoint: `GET https://howlongtobeat.com/_next/data/{buildId}/game/{gameId}.json`
+
+This returns full game details including completion times without needing to search.
+
+### Game Matching (Name-Based Fallback)
+
+When no cached HLTB ID exists, we fall back to name-based search.
 
 Priority order:
 1. Exact name match (free - uses search results)
