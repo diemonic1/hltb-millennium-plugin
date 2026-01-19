@@ -42,6 +42,8 @@ If no version is provided, suggests a patch increment.
 6. Generate release notes: one bullet per commit, excluding:
    - Version bump commits ("Release v...")
    - Trivial commits (typos, formatting)
+   - Skill/agent updates (.claude directory changes)
+   - CI/workflow updates (.github directory changes)
 7. Verify `../PluginDatabase` exists and contains the submodule:
    ```bash
    ls ../PluginDatabase/plugins/hltb-millennium-plugin
