@@ -42,19 +42,26 @@ function M.sanitize_game_name(name)
     name = name:gsub("™", "")
     name = name:gsub("®", "")
     name = name:gsub("©", "")
+    name = name:gsub("%(TM%)", "")
+    name = name:gsub("%(R%)", "")
     name = name:gsub("%s+", " ")
     name = name:match("^%s*(.-)%s*$") or name
     return name
 end
 
 --[[
-    Simplify game name for fallback search by stripping common suffixes.
+    Simplify game name for fallback search by stripping common suffixes/prefixes.
 
     Stripped patterns:
-    - Edition suffixes: Enhanced, Complete, Definitive, Ultimate, Special, Legacy, Maximum, GOTY
+    - Edition suffixes: Enhanced, Complete, Definitive, Ultimate, Special, Legacy, Maximum,
+      GOTY, Game of the Year, Deluxe, Premium, Premium Online, Steam Edition
     - Anniversary Edition (including "40th Anniversary Edition" etc.)
-    - Remastered, Director's Cut, Collection
+    - Remastered, Remake, (3D Remake), Director's Cut, Collection
+    - Classic, (CLASSIC), (Legacy), HD, Enhanced (standalone)
+    - Single Player, Online
+    - Season N
     - Year tags: (2013), (2020), etc.
+    - Sokpop SXX: prefix
     - Trailing punctuation: dashes, colons
 
     Loops until no more changes to handle stacked suffixes like "Enhanced Edition Director's Cut".
@@ -68,6 +75,7 @@ function M.simplify_game_name(name)
     local prev
     repeat
         prev = name
+
 
         -- Anniversary patterns (longer patterns first)
         name = name:gsub("%s+%d+[snrt][tdh]%s+[Aa]nniversary%s+[Ee]dition$", "")
@@ -89,12 +97,28 @@ function M.simplify_game_name(name)
         name = name:gsub("%s+[Ll]egacy%s+[Ee]dition$", "")
         name = name:gsub("%s+[-:]%s*[Mm]aximum%s+[Ee]dition$", "")
         name = name:gsub("%s+[Mm]aximum%s+[Ee]dition$", "")
-        name = name:gsub("%s+[-:]%s*GOTY%s*[Ee]?d?i?t?i?o?n?$", "")
-        name = name:gsub("%s+[-:]%s*[Gg]ame%s+of%s+the%s+[Yy]ear%s*[Ee]?d?i?t?i?o?n?$", "")
+        name = name:gsub("%s+[-:]%s*GOTY%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*GOTY$", "")
+        name = name:gsub("%s+GOTY%s+[Ee]dition$", "")
+        name = name:gsub("%s+GOTY$", "")
+        name = name:gsub("%s+[-:]%s*[Gg]ame%s+of%s+the%s+[Yy]ear%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Gg]ame%s+of%s+the%s+[Yy]ear$", "")
+        name = name:gsub("%s+[Gg]ame%s+of%s+the%s+[Yy]ear%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Gg]ame%s+of%s+the%s+[Yy]ear$", "")
+        name = name:gsub("%s+[-:]%s*[Dd]eluxe%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Dd]eluxe%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Pp]remium%s+[Oo]nline%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Pp]remium%s+[Oo]nline%s+[Ee]dition$", "")
+        name = name:gsub("%s+[-:]%s*[Pp]remium%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Pp]remium%s+[Ee]dition$", "")
+        name = name:gsub("%s+[Ss]team%s+[Ee]dition$", "")
 
-        -- Remastered
+        -- Remastered / Remake
         name = name:gsub("%s+[-:]%s*[Rr]emastered$", "")
         name = name:gsub("%s+[Rr]emastered$", "")
+        name = name:gsub("%s+%([3Dd]+%s*[Rr]emake%)$", "")
+        name = name:gsub("%s+[-:]%s*[Rr]emake$", "")
+        name = name:gsub("%s+[Rr]emake$", "")
 
         -- Director's Cut
         name = name:gsub("%s+[-:]%s*[Dd]irector'?s?%s+[Cc]ut$", "")
@@ -103,10 +127,29 @@ function M.simplify_game_name(name)
         -- Collection
         name = name:gsub("%s+[Cc]ollection$", "")
 
+        -- Classic / (Legacy) / HD / Enhanced
+        name = name:gsub("%s+%([Ll]egacy%)$", "")
+        name = name:gsub("%s+[-:]%s*[Cc]lassic$", "")
+        name = name:gsub("%s+[Cc]lassic$", "")
+        name = name:gsub("%s+%(CLASSIC%)$", "")
+        name = name:gsub("%s+HD$", "")
+        name = name:gsub("%s+[Ee]nhanced$", "")
+
+        -- Single Player suffix
+        name = name:gsub("%s+[-:]%s*[Ss]ingle%s+[Pp]layer$", "")
+        name = name:gsub("%s+[Ss]ingle%s+[Pp]layer$", "")
+
+        -- Season N suffix
+        name = name:gsub("%s+[-:]%s*[Ss]eason%s+%d+$", "")
+        name = name:gsub("%s+[Ss]eason%s+%d+$", "")
+
+        -- Online suffix (for MMOs)
+        name = name:gsub("%s+[Oo]nline$", "")
+
         -- Year tags at end: (2013), (2020), etc.
         name = name:gsub("%s+%([12][09]%d%d%)$", "")
 
-        -- Clean up trailing punctuation left after stripping (e.g., trailing " -")
+        -- Clean up trailing punctuation left after stripping
         name = name:gsub("%s*[-:]%s*$", "")
     until name == prev
 

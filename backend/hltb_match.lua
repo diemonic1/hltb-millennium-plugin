@@ -86,10 +86,25 @@ local function find_best_match(query, steam_app_id)
 end
 
 -- Find most compatible game data
+--
+-- Uses a two-step search strategy: first with sanitized name, then with simplified name.
+-- This is necessary because HLTB naming is inconsistent:
+--
+-- Cases where simplify() HELPS (HLTB omits edition suffix):
+--   - "Artifact Classic" -> HLTB uses "Artifact"
+--   - "Company of Heroes - Legacy Edition" -> HLTB uses "Company of Heroes"
+--
+-- Cases where simplify() HURTS (HLTB keeps edition suffix):
+--   - "Baldur's Gate: Enhanced Edition" -> HLTB uses same name
+--   - "BioShock Remastered" -> HLTB uses same name
+--   - "Age of Empires II: Definitive Edition" -> HLTB uses same name
+--
+-- We search with the original name first to avoid breaking the second category,
+-- then fall back to simplified name only if needed.
 function M.search_best_match(app_name, steam_app_id)
     logger:info("Searching HLTB for: " .. app_name)
 
-    -- Try with original name first
+    -- Try with original (sanitized) name first
     local best_item, best_distance = find_best_match(app_name, steam_app_id)
 
     -- Check if we should retry with simplified name
