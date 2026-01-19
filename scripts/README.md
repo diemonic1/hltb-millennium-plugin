@@ -4,7 +4,7 @@ Scripts for maintaining `name_fixes.lua`.
 
 ## discover-name-fixes.js
 
-Analyzes Steam libraries to find games needing manual name fixes and validates the sanitize/simplify matching logic.
+Finds games where automatic HLTB name matching fails by comparing Steam names against HLTB's known mappings. Uses the same sanitize/simplify logic as the plugin to ensure accurate results.
 
 ### Windows Setup
 
@@ -14,20 +14,25 @@ Analyzes Steam libraries to find games needing manual name fixes and validates t
    Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
    ```
 
-2. Install Node.js and LuaJIT:
+2. Install dependencies:
    ```powershell
-   scoop install nodejs-lts luajit
+   scoop install nodejs-lts luajit luarocks
+   luarocks install dkjson
    ```
 
-3. Verify installation:
+3. Configure Lua to find luarocks modules (restart terminal after):
    ```powershell
-   node --version   # Should be 18+
-   luajit -v        # Should show LuaJIT version
+   [Environment]::SetEnvironmentVariable("LUA_PATH", (luarocks path --lr-path), "User")
+   [Environment]::SetEnvironmentVariable("LUA_CPATH", (luarocks path --lr-cpath), "User")
+   ```
+
+4. Verify:
+   ```powershell
+   node --version   # 18+
+   luajit -v
    ```
 
 ### Usage
-
-From the repository root:
 
 ```bash
 node scripts/discover-name-fixes.js
@@ -35,33 +40,10 @@ node scripts/discover-name-fixes.js
 
 ### Configuration
 
-Edit the `PROFILES` array in the script to add Steam profile names:
-
-```javascript
-const PROFILES = [
-  'mulard',
-  'your_steam_profile',  // Add your public profile
-];
-```
-
-Profiles must have public game libraries. To check: visit `steamcommunity.com/id/YOUR_PROFILE/games` - if you can see the games list without logging in, it's public.
+Edit `PROFILES` in the script to add Steam profile IDs. Profiles must be public (game library visible without login). Find large public libraries at [steamladder.com](https://steamladder.com/ladder/games/).
 
 ### Output
 
-The script runs two phases:
+**Phase 1: Validate existing fixes** - Compares entries against HLTB API data. Deviations may be false positives since the API's `hltb_name` field often echoes the Steam name rather than the actual HLTB title.
 
-**Phase 1: Validate existing name_fixes**
-
-Compares entries against the Steam import API's `hltb_name` field. Note: This field often echoes the Steam name rather than the actual HLTB title, so deviations may be false positives.
-
-**Phase 2: Analyze sanitize vs simplify**
-
-Categorizes games to validate our two-step search approach:
-- Case A: Both sanitize and simplify match
-- Case B: Sanitize matches, simplify would break (proves we need the two-step approach)
-- Case C: Sanitize fails, simplify helps (proves simplify is needed as fallback)
-- Case D: Neither matches (needs manual name_fix entry)
-
-**Phase 3: Games needing fixes**
-
-Lists games that need new `name_fixes.lua` entries with suggested values.
+**Phase 2: Games needing fixes** - Lists games where neither sanitize nor simplify produces a match, with suggested `name_fixes.lua` entries.

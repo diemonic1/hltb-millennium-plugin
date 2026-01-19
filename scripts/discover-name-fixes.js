@@ -1,15 +1,17 @@
 /**
- * Name Fix Discovery & Validation Script
+ * Name Fix Discovery Script
  *
- * Fetches Steam libraries via HLTB API and:
- * 1. Validates existing name_fixes.lua entries
- * 2. Analyzes sanitize vs simplify effectiveness
- * 3. Identifies games needing new fixes
+ * Fetches Steam libraries via HLTB's Steam import API and identifies games
+ * where automatic name matching fails, requiring manual name_fixes.lua entries.
+ *
+ * The script uses the same sanitize/simplify logic as the plugin (via Lua)
+ * to ensure consistency between discovery and runtime matching.
  *
  * Usage: node scripts/discover-name-fixes.js
  *
  * Requirements:
- *   - luajit or lua in PATH
+ *   - Node.js 18+ (for native fetch)
+ *   - Lua or LuaJIT with dkjson module
  *   - Public Steam profiles in PROFILES array
  */
 
@@ -24,15 +26,22 @@ const ROOT_DIR = join(__dirname, '..');
 // Steam profiles to scan (must be public)
 const PROFILES = [
   'mulard',
-  // Add more public profiles for broader coverage
+  '76561198017975643', // Top US Steam owner (steamladder.com/ladder/games/us)
+  '76561198028121353', // Top overall Steam owner (steamladder.com/ladder/games)
+  '76561198355625888',
+  '76561198001237877',
+  '76561198051887711',
 ];
 
 const HLTB_API_URL = 'https://howlongtobeat.com/api/steam/getSteamImportData';
-const LEVENSHTEIN_THRESHOLD = 0.2; // 20% of name length
 
-// Detect available Lua interpreter
-let LUA_CMD = null;
+// Match threshold: 20% of name length, minimum 5 edits
+// e.g., 30-char name allows 6 edits, 10-char name allows 5 edits
+const LEVENSHTEIN_THRESHOLD = 0.2;
 
+/**
+ * Detect available Lua interpreter (prefers luajit)
+ */
 function detectLua() {
   for (const cmd of ['luajit', 'lua']) {
     try {
@@ -46,38 +55,26 @@ function detectLua() {
 }
 
 /**
- * Call Lua function via CLI
+ * Process all games through Lua in one batch call
  */
-function callLua(command, ...args) {
+function processGamesBatch(luaCmd, games) {
   const luaScript = join(ROOT_DIR, 'scripts', 'name-utils-cli.lua');
-  const escapedArgs = args.map(a => `"${a.replace(/"/g, '\\"')}"`).join(' ');
-  const cmd = `${LUA_CMD} "${luaScript}" ${command} ${escapedArgs}`;
+  const input = JSON.stringify({ games });
 
   try {
-    const result = execSync(cmd, { cwd: ROOT_DIR, encoding: 'utf-8' });
-    return result.trim();
+    const result = execSync(`${luaCmd} "${luaScript}"`, {
+      cwd: ROOT_DIR,
+      encoding: 'utf-8',
+      input,
+      maxBuffer: 50 * 1024 * 1024, // 50MB for large libraries
+    });
+    return JSON.parse(result);
   } catch (err) {
-    console.error(`Lua call failed: ${cmd}`);
-    console.error(err.message);
+    console.error('Lua batch processing failed:', err.message);
     process.exit(1);
   }
 }
 
-function sanitize(name) {
-  return callLua('sanitize', name);
-}
-
-function simplify(name) {
-  return callLua('simplify', name);
-}
-
-function levenshtein(s1, s2) {
-  return parseInt(callLua('levenshtein', s1, s2), 10);
-}
-
-/**
- * Check if distance is within threshold
- */
 function isWithinThreshold(distance, name1, name2) {
   const maxLen = Math.max(name1.length, name2.length);
   const threshold = Math.max(5, Math.floor(maxLen * LEVENSHTEIN_THRESHOLD));
@@ -136,27 +133,27 @@ async function fetchSteamLibrary(profile) {
 }
 
 /**
- * Main
+ * Main entry point
  */
 async function main() {
   console.log('Name Fix Discovery & Validation Script');
   console.log('======================================\n');
 
   // Verify Lua is available
-  LUA_CMD = detectLua();
-  if (!LUA_CMD) {
+  const luaCmd = detectLua();
+  if (!luaCmd) {
     console.error('Error: Neither luajit nor lua found in PATH');
-    console.error('Install LuaJIT: https://luajit.org/download.html');
+    console.error('Install: scoop install luajit');
     process.exit(1);
   }
-  console.log(`Using Lua interpreter: ${LUA_CMD}\n`);
+  console.log(`Using Lua interpreter: ${luaCmd}\n`);
 
   // Load existing fixes
   const existingFixes = loadExistingFixes();
   console.log(`Loaded ${existingFixes.size} existing name fixes\n`);
 
   // Fetch all profiles
-  const allGames = new Map(); // steam_id -> game data
+  const allGames = new Map();
 
   for (const profile of PROFILES) {
     console.log(`Fetching profile: ${profile}...`);
@@ -175,6 +172,23 @@ async function main() {
   }
 
   console.log(`\nTotal unique games: ${allGames.size}\n`);
+
+  // Filter games that have HLTB data and no existing fix
+  const gamesToProcess = [];
+  for (const [steamId, game] of allGames) {
+    if (game.hltb_id && game.hltb_id !== 0 && !existingFixes.has(steamId)) {
+      gamesToProcess.push({
+        steam_id: steamId,
+        steam_name: game.steam_name,
+        hltb_name: game.hltb_name,
+      });
+    }
+  }
+
+  console.log(`Processing ${gamesToProcess.length} games through Lua...\n`);
+
+  // Batch process all games
+  const processed = processGamesBatch(luaCmd, gamesToProcess);
 
   // ========================================
   // PHASE 1: Validate existing name_fixes
@@ -195,27 +209,42 @@ async function main() {
   console.log('PHASE 1: Validating existing name_fixes.lua');
   console.log('='.repeat(50) + '\n');
 
-  const fixValidation = {
-    correct: [],
-    deviations: [],
-    notInLibrary: [],
-  };
+  // Process fixes through Lua for validation
+  const fixesToValidate = [];
+  for (const [appId, fixedName] of existingFixes) {
+    const game = allGames.get(appId);
+    if (game && game.hltb_name) {
+      fixesToValidate.push({
+        steam_id: appId,
+        steam_name: fixedName,
+        hltb_name: game.hltb_name,
+      });
+    }
+  }
+
+  const fixValidation = { correct: [], deviations: [], notInLibrary: [] };
+
+  if (fixesToValidate.length > 0) {
+    const fixResults = processGamesBatch(luaCmd, fixesToValidate);
+
+    for (let i = 0; i < fixesToValidate.length; i++) {
+      const fix = fixesToValidate[i];
+      const result = fixResults[i];
+      const distance = result.dist_sanitized;
+      const matches = distance === 0 || isWithinThreshold(distance, fix.steam_name, fix.hltb_name);
+
+      if (matches) {
+        fixValidation.correct.push({ appId: fix.steam_id, fixedName: fix.steam_name, hltbName: fix.hltb_name, distance });
+      } else {
+        fixValidation.deviations.push({ appId: fix.steam_id, fixedName: fix.steam_name, hltbName: fix.hltb_name, distance });
+      }
+    }
+  }
 
   for (const [appId, fixedName] of existingFixes) {
     const game = allGames.get(appId);
-    if (!game) {
+    if (!game || !game.hltb_name) {
       fixValidation.notInLibrary.push({ appId, fixedName });
-      continue;
-    }
-
-    const hltbName = game.hltb_name;
-    const distance = levenshtein(fixedName.toLowerCase(), hltbName.toLowerCase());
-    const matches = distance === 0 || isWithinThreshold(distance, fixedName, hltbName);
-
-    if (matches) {
-      fixValidation.correct.push({ appId, fixedName, hltbName, distance });
-    } else {
-      fixValidation.deviations.push({ appId, fixedName, hltbName, distance });
     }
   }
 
@@ -234,127 +263,39 @@ async function main() {
   }
 
   // ========================================
-  // PHASE 2: Analyze sanitize vs simplify
-  // ========================================
-  //
-  // The main code searches with sanitize(name) first, then falls back to simplify(sanitize(name)).
-  // This analysis validates that approach by categorizing games:
-  //
-  // Case A: Both match - no problem either way
-  // Case B: Sanitize matches, simplify BREAKS - proves we can't always simplify
-  //   Examples: "Baldur's Gate: Enhanced Edition", "BioShock Remastered"
-  //   HLTB uses the full name with suffix, so stripping it would break matching.
-  // Case C: Sanitize fails, simplify HELPS - proves simplify is needed as fallback
-  //   Examples: "Artifact Classic" -> "Artifact", "Company of Heroes - Legacy Edition" -> "Company of Heroes"
-  //   HLTB omits the suffix, so stripping it helps find the match.
-  // Case D: Neither matches - needs manual name_fix entry
-  //
-  console.log('\n' + '='.repeat(50));
-  console.log('PHASE 2: Analyzing sanitize vs simplify');
-  console.log('='.repeat(50) + '\n');
-
-  const cases = {
-    A: [], // Both match
-    B: [], // Sanitize matches, simplify breaks
-    C: [], // Sanitize fails, simplify helps
-    D: [], // Neither matches (needs fix)
-  };
-
-  let skippedNoHltb = 0;
-  let skippedHasFix = 0;
-
-  for (const [steamId, game] of allGames) {
-    // Skip games not on HLTB
-    if (!game.hltb_id || game.hltb_id === 0) {
-      skippedNoHltb++;
-      continue;
-    }
-
-    // Skip games with existing fixes (they bypass this logic)
-    if (existingFixes.has(steamId)) {
-      skippedHasFix++;
-      continue;
-    }
-
-    const steamName = game.steam_name;
-    const hltbName = game.hltb_name;
-
-    const sanitized = sanitize(steamName);
-    const simplified = simplify(sanitized);
-
-    const distSanitized = levenshtein(sanitized.toLowerCase(), hltbName.toLowerCase());
-    const distSimplified = levenshtein(simplified.toLowerCase(), hltbName.toLowerCase());
-
-    const sanitizedMatches = distSanitized === 0 || isWithinThreshold(distSanitized, sanitized, hltbName);
-    const simplifiedMatches = distSimplified === 0 || isWithinThreshold(distSimplified, simplified, hltbName);
-
-    const entry = {
-      steamId,
-      steamName,
-      hltbName,
-      sanitized,
-      simplified,
-      distSanitized,
-      distSimplified,
-    };
-
-    if (sanitizedMatches && simplifiedMatches) {
-      cases.A.push(entry);
-    } else if (sanitizedMatches && !simplifiedMatches) {
-      cases.B.push(entry);
-    } else if (!sanitizedMatches && simplifiedMatches) {
-      cases.C.push(entry);
-    } else {
-      cases.D.push(entry);
-    }
-  }
-
-  console.log('Case Analysis (games without name_fixes):');
-  console.log(`  Case A (both match):        ${cases.A.length}`);
-  console.log(`  Case B (simplify BREAKS):   ${cases.B.length} ← CRITICAL if > 0`);
-  console.log(`  Case C (simplify helps):    ${cases.C.length}`);
-  console.log(`  Case D (neither, needs fix): ${cases.D.length}`);
-  console.log(`  Skipped (not on HLTB):      ${skippedNoHltb}`);
-  console.log(`  Skipped (has name_fix):     ${skippedHasFix}`);
-
-  if (cases.B.length > 0) {
-    console.log('\n*** CRITICAL: Case B games (simplify would BREAK matching) ***');
-    for (const entry of cases.B) {
-      console.log(`  [${entry.steamId}] ${entry.steamName}`);
-      console.log(`    Sanitized:  "${entry.sanitized}" (dist: ${entry.distSanitized}) ✓`);
-      console.log(`    Simplified: "${entry.simplified}" (dist: ${entry.distSimplified}) ✗`);
-      console.log(`    HLTB:       "${entry.hltbName}"`);
-    }
-    console.log('\n*** Cannot simplify code - simplify() breaks some matches ***');
-  } else {
-    console.log('\n✓ No Case B found - safe to always use simplify(sanitize(name))');
-  }
-
-  if (cases.C.length > 0) {
-    console.log(`\nCase C examples (simplify helps - first 5):`);
-    for (const entry of cases.C.slice(0, 5)) {
-      console.log(`  [${entry.steamId}] ${entry.steamName}`);
-      console.log(`    Sanitized:  "${entry.sanitized}" (dist: ${entry.distSanitized})`);
-      console.log(`    Simplified: "${entry.simplified}" (dist: ${entry.distSimplified})`);
-      console.log(`    HLTB:       "${entry.hltbName}"`);
-    }
-  }
-
-  // ========================================
-  // PHASE 3: Find games needing new fixes
+  // PHASE 2: Find games needing new fixes
   // ========================================
   console.log('\n' + '='.repeat(50));
-  console.log('PHASE 3: Games needing new name_fixes');
+  console.log('PHASE 2: Games needing new name_fixes');
   console.log('='.repeat(50) + '\n');
 
-  const needsFix = cases.D;
+  // Find games where neither sanitize nor simplify matches
+  const needsFix = [];
+  for (let i = 0; i < gamesToProcess.length; i++) {
+    const game = gamesToProcess[i];
+    const result = processed[i];
+
+    const sanitizedMatches = result.dist_sanitized === 0 || isWithinThreshold(result.dist_sanitized, result.sanitized, game.hltb_name);
+    const simplifiedMatches = result.dist_simplified === 0 || isWithinThreshold(result.dist_simplified, result.simplified, game.hltb_name);
+
+    if (!sanitizedMatches && !simplifiedMatches) {
+      needsFix.push({
+        steamId: game.steam_id,
+        steamName: game.steam_name,
+        hltbName: game.hltb_name,
+        sanitized: result.sanitized,
+        simplified: result.simplified,
+        distSanitized: result.dist_sanitized,
+        distSimplified: result.dist_simplified,
+      });
+    }
+  }
 
   if (needsFix.length === 0) {
     console.log('No new fixes needed!');
   } else {
     console.log(`Found ${needsFix.length} games needing fixes:\n`);
 
-    // Sort by steam_id
     needsFix.sort((a, b) => a.steamId - b.steamId);
 
     console.log('Suggested name_fixes.lua entries:');
@@ -389,9 +330,7 @@ async function main() {
 
   console.log(`Total games analyzed: ${allGames.size}`);
   console.log(`Existing name_fixes: ${existingFixes.size} (${fixValidation.correct.length} match API, ${fixValidation.deviations.length} deviations)`);
-  console.log(`Games handled automatically: ${cases.A.length + cases.C.length}`);
   console.log(`Games needing new fixes: ${needsFix.length}`);
-  console.log(`Safe to simplify code: ${cases.B.length === 0 ? 'YES' : 'NO'}`);
 }
 
 main().catch((err) => {

@@ -1,37 +1,44 @@
 --[[
-    CLI wrapper for hltb_utils.lua functions.
-    Called by discover-name-fixes.js via luajit.
+    Batch processor for name matching.
 
-    Usage:
-        luajit scripts/name-utils-cli.lua sanitize "Game Name™"
-        luajit scripts/name-utils-cli.lua simplify "Game Name: Enhanced Edition"
-        luajit scripts/name-utils-cli.lua levenshtein "string1" "string2"
+    Reads JSON game list from stdin, runs each through sanitize/simplify,
+    computes Levenshtein distances, and outputs results as JSON.
+
+    This ensures the discovery script uses the exact same matching logic
+    as the plugin at runtime.
+
+    Input:  {"games": [{"steam_name": "...", "hltb_name": "..."}, ...]}
+    Output: [{"sanitized": "...", "simplified": "...", "dist_sanitized": N, "dist_simplified": N}, ...]
 ]]
 
 package.path = package.path .. ";backend/?.lua"
 local utils = require("hltb_utils")
+local json = require("dkjson")
 
-local command = arg[1]
-local input = arg[2]
-
-if not command or not input then
-    io.stderr:write("Usage: luajit name-utils-cli.lua <command> <input> [input2]\n")
-    io.stderr:write("Commands: sanitize, simplify, levenshtein\n")
+local input_json = io.read("*a")
+local input, err = json.decode(input_json)
+if not input then
+    io.stderr:write("Invalid JSON: " .. (err or "unknown error") .. "\n")
     os.exit(1)
 end
 
-if command == "sanitize" then
-    print(utils.sanitize_game_name(input))
-elseif command == "simplify" then
-    print(utils.simplify_game_name(input))
-elseif command == "levenshtein" then
-    local s2 = arg[3]
-    if not s2 then
-        io.stderr:write("levenshtein requires two strings\n")
-        os.exit(1)
-    end
-    print(utils.levenshtein_distance(input, s2))
-else
-    io.stderr:write("Unknown command: " .. command .. "\n")
-    os.exit(1)
+local results = {}
+for i, entry in ipairs(input.games) do
+    local steam_name = entry.steam_name
+    local hltb_name = entry.hltb_name
+
+    local sanitized = utils.sanitize_game_name(steam_name)
+    local simplified = utils.simplify_game_name(sanitized)
+
+    local dist_sanitized = utils.levenshtein_distance(sanitized:lower(), hltb_name:lower())
+    local dist_simplified = utils.levenshtein_distance(simplified:lower(), hltb_name:lower())
+
+    results[i] = {
+        sanitized = sanitized,
+        simplified = simplified,
+        dist_sanitized = dist_sanitized,
+        dist_simplified = dist_simplified,
+    }
 end
+
+print(json.encode(results))
