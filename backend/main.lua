@@ -44,19 +44,29 @@ function GetHltbData(app_id)
             return json.encode({ success = false, error = "Could not get game name" })
         end
 
-        logger:info("Got game name: " .. game_name)
+        logger:info("Raw name: " .. game_name)
 
-        -- Sanitize first (removes ™, ®, etc.)
-        local search_name = utils.sanitize_game_name(game_name)
-        if search_name ~= game_name then
-            logger:info("Sanitized to: " .. search_name)
-        end
+        local search_name = game_name
 
-        -- Apply manual name fix if available
+        -- Try name fix with raw name first (supports keys with ™, ®, etc.)
         local fixed_name = name_fixes[search_name]
         if fixed_name then
-            logger:info("Applied name fix: " .. fixed_name)
+            logger:info("Name fix: " .. fixed_name)
             search_name = fixed_name
+        end
+
+        -- Sanitize (removes ™, ®, etc.)
+        local sanitized = utils.sanitize_game_name(search_name)
+        if sanitized ~= search_name then
+            logger:info("Sanitized: " .. sanitized)
+            search_name = sanitized
+        end
+
+        -- Try name fix again with sanitized name (backward compatibility)
+        local fixed_sanitized = name_fixes[search_name]
+        if fixed_sanitized then
+            logger:info("Name fix: " .. fixed_sanitized)
+            search_name = fixed_sanitized
         end
 
         -- Search HLTB

@@ -55,8 +55,5 @@ export async function fetchHltbData(appId: number): Promise<FetchResult> {
   }
 
   const data = await fetchFromBackend(appId);
-  if (!data) {
-    setCache(appId, null);
-  }
   return { data, fromCache: false, refreshPromise: null };
 }
