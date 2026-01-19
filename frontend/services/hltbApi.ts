@@ -29,7 +29,7 @@ async function fetchFromBackend(appId: number): Promise<HltbGameResult | null> {
       return null;
     }
 
-    // Data is always present on success (may or may not have game_id)
+    // Cache all results (UI needs data even for misses)
     if (result.data) {
       log('Caching data for appId:', appId, result.data);
       setCache(appId, result.data);
@@ -49,8 +49,11 @@ export async function fetchHltbData(appId: number): Promise<FetchResult> {
 
   if (cached) {
     const cachedData = cached.entry.notFound ? null : cached.entry.data;
-    const refreshPromise = cached.isStale ? fetchFromBackend(appId) : null;
-    log('Cache hit:', appId, cached.isStale ? '(stale)' : '(fresh)');
+    // Always refetch if no game_id (miss) so name fixes can take effect
+    const isMiss = cachedData && !cachedData.game_id;
+    const shouldRefresh = cached.isStale || isMiss;
+    const refreshPromise = shouldRefresh ? fetchFromBackend(appId) : null;
+    log('Cache hit:', appId, cached.isStale ? '(stale)' : isMiss ? '(miss, refetching)' : '(fresh)');
     return { data: cachedData, fromCache: true, refreshPromise };
   }
 

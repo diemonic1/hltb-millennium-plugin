@@ -8,6 +8,8 @@ return {
     ["ATOM RPG: Post-apocalyptic indie game"] = "ATOM RPG",
     ["Batman: Arkham Asylum Game of the Year Edition"] = "Batman: Arkham Asylum GOTY",
     ["Borderlands 2 RU"] = "Borderlands 2",
+    ["Borderlands Game of the Year Enhanced"] = "Borderlands: Game of the Year",
+    ["Borderlands GOTY Enhanced"] = "Borderlands: Game of the Year",
     ["Dark Messiah of Might & Magic"] = "Dark Messiah of Might and Magic",
     ["Dead Rising 3 Apocalypse Edition"] = "Dead Rising 3",
     ["Disco Elysium - The Final Cut"] = "Disco Elysium",
@@ -37,7 +39,9 @@ return {
     ["Rock of Ages 2: Bigger & Boulder"] = "Rock of Ages II: Bigger & Boulder",
     ["Sea of Thieves: 2025 Edition"] = "Sea of Thieves",
     ["SEGA Mega Drive and Genesis Classics"] = "SEGA Genesis Classics Collection",
+    ["Sid Meier's Civilization® VI"] = "Sid Meiers Civilization VI",
     ["Space Pilgrim Episode II: Epsilon Indi"] = "Space Pilgrim: Episode Two - Epsilon Indi",
     ["STAR WARS Battlefront II (Classic, 2005)"] = "STAR WARS Battlefront II",
+    ["Total War: NAPOLEON – Definitive Edition"] = "Napoleon: Total War",
     ["Warhammer 40,000: Dawn of War II: Retribution"] = "Warhammer 40,000: Dawn of War II - Retribution",
 }
