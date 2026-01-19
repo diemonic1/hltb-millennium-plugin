@@ -41,5 +41,6 @@ luac.out
 
 # Project specific
 node_modules/
+package-lock.json
 .millennium/
 nul
