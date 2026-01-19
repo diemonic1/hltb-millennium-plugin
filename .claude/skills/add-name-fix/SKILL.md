@@ -6,13 +6,13 @@ allowed-tools: Read, Edit, WebFetch, WebSearch
 
 # Add Name Fix
 
-Adds a game name mapping from Steam to HLTB in `backend/name_fixes.lua`.
+Adds a game name mapping from Steam AppID to HLTB name in `backend/name_fixes.lua`.
 
 ## Input Formats
 
 The skill accepts three input formats:
 
-### 1. Steam App ID
+### 1. Steam App ID (preferred)
 ```
 /add-name-fix 1004640
 ```
@@ -24,28 +24,28 @@ The skill accepts three input formats:
 
 ### 3. Full Mapping
 ```
-/add-name-fix "FINAL FANTASY TACTICS - The Ivalice Chronicles" -> "Final Fantasy Tactics: The Ivalice Chronicles"
+/add-name-fix 1004640 -> "Final Fantasy Tactics: The Ivalice Chronicles"
 ```
 
 ## Instructions
 
 ### If given an App ID (numeric input):
-1. Fetch the Steam API to get the game name:
-   `https://store.steampowered.com/api/appdetails?appids={APPID}`
-2. Extract the name from `response[appid].data.name`
-3. Search HLTB for the game (see "Searching HLTB" below)
-4. Present confirmation summary and ask user to confirm the mapping
+1. Fetch the Steam store page to verify the AppID exists:
+   `https://store.steampowered.com/app/{APPID}`
+2. Search HLTB for the game (see "Searching HLTB" below)
+3. Present confirmation summary and ask user to confirm the mapping
 
 ### If given a Steam name only:
 1. Search for the Steam app ID: WebSearch `{game_name} site:store.steampowered.com`
-2. Fetch the Steam API to verify the exact name:
-   `https://store.steampowered.com/api/appdetails?appids={APPID}`
-3. Search HLTB for the game (see "Searching HLTB" below)
-4. Present confirmation summary and ask user to confirm the mapping
+2. Extract the AppID from the Steam URL (format: `store.steampowered.com/app/{APPID}/...`)
+3. Verify by fetching: `https://store.steampowered.com/app/{APPID}`
+4. Search HLTB for the game (see "Searching HLTB" below)
+5. Present confirmation summary and ask user to confirm the mapping
 
 ### If given a full mapping (contains ` -> `):
-1. Parse the arguments to extract the Steam name and HLTB name
-2. Proceed directly to adding the mapping
+1. Parse the arguments to extract the AppID and HLTB name
+2. Verify the AppID by fetching: `https://store.steampowered.com/app/{APPID}`
+3. Proceed directly to adding the mapping
 
 ### Searching HLTB
 Note: Claude cannot directly access howlongtobeat.com, so use IsThereAnyDeal as a proxy.
@@ -58,42 +58,30 @@ Note: Claude cannot directly access howlongtobeat.com, so use IsThereAnyDeal as 
 ### Confirmation Output Format
 Always present this exact format before asking for user confirmation:
 ```
-- **Steam name:** "{exact name from Steam API}"
+- **AppID:** {appid}
+- **Steam name:** "{name from Steam page}"
 - **HLTB name:** "{exact name from HLTB}"
 - **HLTB page:** {URL}
 ```
 
 ### Adding the mapping:
-1. Sanitize the Steam name (see rules below)
-2. Read `backend/name_fixes.lua`
-3. Find the correct alphabetical position (case-insensitive) for the new key
-4. Insert the new mapping at that position to maintain sorted order
-5. Report the mapping that was added
-
-## Sanitization Rules
-
-See `backend/hltb_utils.lua` for the canonical `sanitize_game_name` implementation. Always check the code.
-
-Current rules:
-- Remove ™ (trademark symbol)
-- Remove ® (registered trademark)
-- Remove © (copyright symbol)
-- Collapse multiple spaces to single space
-- Trim leading/trailing whitespace
-
-Update this skill so that it remains in sync with the code.
+1. Read `backend/name_fixes.lua`
+2. Find the correct position to maintain numerical order (ascending by AppID)
+3. Insert the new mapping: `[{APPID}] = "{HLTB name}",`
+4. Report the mapping that was added
 
 ## Example Workflow
 
 For app ID 1004640:
 
-1. Fetch Steam API: `https://store.steampowered.com/api/appdetails?appids=1004640`
+1. Fetch Steam page: `https://store.steampowered.com/app/1004640`
 2. Steam name: "FINAL FANTASY TACTICS - The Ivalice Chronicles"
 3. WebSearch: "FINAL FANTASY TACTICS IsThereAnyDeal"
 4. Fetch IsThereAnyDeal page to get HLTB game ID
 5. Present confirmation:
+   - **AppID:** 1004640
    - **Steam name:** "FINAL FANTASY TACTICS - The Ivalice Chronicles"
    - **HLTB name:** "Final Fantasy Tactics: The Ivalice Chronicles"
    - **HLTB page:** https://howlongtobeat.com/game/169173
 6. User confirms mapping
-7. Insert into name_fixes.lua in alphabetical order: `["FINAL FANTASY TACTICS - The Ivalice Chronicles"] = "Final Fantasy Tactics: The Ivalice Chronicles"`
+7. Insert into name_fixes.lua in numerical order: `[1004640] = "Final Fantasy Tactics: The Ivalice Chronicles",`
