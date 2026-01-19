@@ -38,35 +38,28 @@ function GetHltbData(app_id)
     local success, result = pcall(function()
         logger:info("GetHltbData called for app_id: " .. tostring(app_id))
 
-        local game_name, name_err = get_game_name(app_id)
-        if not game_name then
-            logger:error("Could not get game name: " .. (name_err or "unknown"))
-            return json.encode({ success = false, error = "Could not get game name" })
-        end
+        -- Check for AppID-based name fix first
+        local fixed_name = name_fixes[app_id]
+        local search_name
 
-        logger:info("Raw name: " .. game_name)
-
-        local search_name = game_name
-
-        -- Try name fix with raw name first (supports keys with ™, ®, etc.)
-        local fixed_name = name_fixes[search_name]
         if fixed_name then
-            logger:info("Name fix: " .. fixed_name)
+            logger:info("Name fix (AppID " .. tostring(app_id) .. "): " .. fixed_name)
             search_name = fixed_name
-        end
+        else
+            -- No fix, get name from Steam
+            local game_name, name_err = get_game_name(app_id)
+            if not game_name then
+                logger:error("Could not get game name: " .. (name_err or "unknown"))
+                return json.encode({ success = false, error = "Could not get game name" })
+            end
 
-        -- Sanitize (removes ™, ®, etc.)
-        local sanitized = utils.sanitize_game_name(search_name)
-        if sanitized ~= search_name then
-            logger:info("Sanitized: " .. sanitized)
-            search_name = sanitized
-        end
+            logger:info("Raw name: " .. game_name)
 
-        -- Try name fix again with sanitized name (backward compatibility)
-        local fixed_sanitized = name_fixes[search_name]
-        if fixed_sanitized then
-            logger:info("Name fix: " .. fixed_sanitized)
-            search_name = fixed_sanitized
+            -- Sanitize (removes ™, ®, etc.)
+            search_name = utils.sanitize_game_name(game_name)
+            if search_name ~= game_name then
+                logger:info("Sanitized: " .. search_name)
+            end
         end
 
         -- Search HLTB

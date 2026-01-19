@@ -31,24 +31,16 @@ describe("name_fixes.lua", function()
         assert.is_table(name_fixes, "name_fixes.lua should return a table")
     end)
 
-    it("contains only string keys and string values", function()
+    it("contains only number keys (AppIDs) and string values", function()
         for key, value in pairs(name_fixes) do
-            assert.is_string(key, "Key should be a string: " .. tostring(key))
-            assert.is_string(value, "Value should be a string for key: " .. key)
+            assert.is_number(key, "Key should be a number (AppID): " .. tostring(key))
+            assert.is_string(value, "Value should be a string for AppID: " .. tostring(key))
         end
     end)
 
-    it("has no empty keys or values", function()
+    it("has no empty values", function()
         for key, value in pairs(name_fixes) do
-            assert.is_true(#key > 0, "Key should not be empty")
-            assert.is_true(#value > 0, "Value should not be empty for key: " .. key)
-        end
-    end)
-
-    it("has no no-op mappings (key equals value)", function()
-        for key, value in pairs(name_fixes) do
-            assert.are_not_equal(key, value,
-                "No-op mapping found: \"" .. key .. "\" maps to itself")
+            assert.is_true(#value > 0, "Value should not be empty for AppID: " .. tostring(key))
         end
     end)
 
@@ -58,8 +50,8 @@ describe("name_fixes.lua", function()
         local keys_seen = {}
         local duplicates = {}
 
-        -- Match keys in the format ["key"]
-        for key in file_content:gmatch('%[%"([^"]+)%"%]%s*=') do
+        -- Match keys in the format [12345]
+        for key in file_content:gmatch('%[(%d+)%]%s*=') do
             if keys_seen[key] then
                 table.insert(duplicates, key)
             else
@@ -68,21 +60,21 @@ describe("name_fixes.lua", function()
         end
 
         assert.are_equal(0, #duplicates,
-            "Duplicate keys found: " .. table.concat(duplicates, ", "))
+            "Duplicate AppIDs found: " .. table.concat(duplicates, ", "))
     end)
 
-    it("has keys in alphabetical order", function()
+    it("has keys in numerical order", function()
         assert.is_not_nil(file_content, "Could not read name_fixes.lua")
 
         local keys = {}
-        for key in file_content:gmatch('%[%"([^"]+)%"%]%s*=') do
-            table.insert(keys, key)
+        for key in file_content:gmatch('%[(%d+)%]%s*=') do
+            table.insert(keys, tonumber(key))
         end
 
         for i = 2, #keys do
             local prev, curr = keys[i-1], keys[i]
-            assert.is_true(prev:lower() <= curr:lower(),
-                "Keys not sorted: \"" .. prev .. "\" should come after \"" .. curr .. "\"")
+            assert.is_true(prev <= curr,
+                "AppIDs not sorted: " .. tostring(prev) .. " should come before " .. tostring(curr))
         end
     end)
 end)
