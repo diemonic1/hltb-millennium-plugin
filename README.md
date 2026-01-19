@@ -61,9 +61,9 @@ Also note that DLC and non-game content will not have HLTB data.
 
 We'll use Final Fantasy Tactics for this example.
 
-1. Navigate to the Steam page: https://store.steampowered.com/app/1004640/FINAL_FANTASY_TACTICS__The_Ivalice_Chronicles/
-2. Note the Steam ID: `1004640`
-3. Find the game in HLTB: https://howlongtobeat.com/game/169173
+1. Navigate to the [Steam](https://store.steampowered.com/app/1004640/FINAL_FANTASY_TACTICS__The_Ivalice_Chronicles/) or [Steam Hunters](https://steamhunters.com/apps/1004640/achievements) page
+2. Note the Steam ID from the URL: `1004640`
+3. Find the game in [HLTB](https://howlongtobeat.com/game/169173)
 4. Note the HLTB name for the game: `Final Fantasy Tactics: The Ivalice Chronicles`
 
 Add a line to the name_fixes.lua file like this:
