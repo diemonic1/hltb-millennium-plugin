@@ -61,30 +61,31 @@ Also note that DLC and non-game content will not have HLTB data.
 
 We'll use Final Fantasy Tactics for this example.
 
-1. Navigate to the Steam page and not the AppID: https://store.steampowered.com/app/1004640/FINAL_FANTASY_TACTICS__The_Ivalice_Chronicles/
-2. Get the Steam API response for this game: https://store.steampowered.com/api/appdetails?appids=1004640
-3. Note the Steam name for the game: FINAL FANTASY TACTICS - The Ivalice Chronicles
-4. Find the game in HLTB: https://howlongtobeat.com/game/169173
-5. Note the HLTB name for the game: Final Fantasy Tactics: The Ivalice Chronicles
+1. Navigate to the Steam page: https://store.steampowered.com/app/1004640/FINAL_FANTASY_TACTICS__The_Ivalice_Chronicles/
+2. Note the Steam ID: `1004640`
+3. Find the game in HLTB: https://howlongtobeat.com/game/169173
+4. Note the HLTB name for the game: `Final Fantasy Tactics: The Ivalice Chronicles`
 
-So our mapping is: "FINAL FANTASY TACTICS - The Ivalice Chronicles" -> "Final Fantasy Tactics: The Ivalice Chronicles". So we add a line to the name_fixes.lua file like this:
-`["FINAL FANTASY TACTICS - The Ivalice Chronicles"] = "Final Fantasy Tactics: The Ivalice Chronicles",`
-
-The first entry (key) is the Steam version of the name. The second entry (value) is what we want to substitute it with, which should match HLTB.
+Add a line to the name_fixes.lua file like this:
+`[1004640] = "Final Fantasy Tactics: The Ivalice Chronicles",`
 
 You should add this correction to your local file and verify that it works before submitting a pull request:
 `Steam/plugins/hltb-for-millennium/backend/name_fixes.lua`
 
 ## How to submit a pull request (PR) from the Github website
 
-If you are already familiar with PRs that is great, just do your thing.
+If you are already familiar with PRs that is great, just do your thing. For new users, you can do this process entirely from the Github website, you just need a free Github account.
 
-For new users, here instructions that you can follow purely from the Github website. You just need a Github account and a browser.
+When you add the name fix, it needs to be:
+* in sorted order by Steam ID
+* not a duplicate
+* correct syntax including a comma at the end
 
-When you add the name fix, the new entry needs to be in alphabetical order and include a comma at the end. There is an automated check that looks for duplicates and if it has either of these errors it won't pass the test so won't be merged.
+An automated check will make sure that all of thes are true before your change can be accepted.
 
 You **must** test it on your local copy before submitting it. I can't test it for you because I probably don't own the game. Other users can't test it for you because they are in different regions and might have other issues going on. It is very important that you test it first - see intructions in the last section.
 
+PR instructions:
 1. Fork this repo (click the "Fork" button at the top right)
 2. Click "Create Fork" to make your own version of the repo - this is where you'll make your edit and then request that the main repo pulls from it
 3. In your fork, navigate to the file you want to edit: `backend/name_fixes.lua`
