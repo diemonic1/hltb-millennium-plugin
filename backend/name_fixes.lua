@@ -10,6 +10,7 @@ return {
     ["Borderlands 2 RU"] = "Borderlands 2",
     ["Borderlands Game of the Year Enhanced"] = "Borderlands: Game of the Year",
     ["Borderlands GOTY Enhanced"] = "Borderlands: Game of the Year",
+    ["Cursed Castilla (Maldita Castilla EX)"] = "Cursed Castilla",
     ["Dark Messiah of Might & Magic"] = "Dark Messiah of Might and Magic",
     ["Dead Rising 3 Apocalypse Edition"] = "Dead Rising 3",
     ["Disco Elysium - The Final Cut"] = "Disco Elysium",
