@@ -47,3 +47,26 @@ Edit `PROFILES` in the script to add Steam profile IDs. Profiles must be public 
 **Phase 1: Validate existing fixes** - Compares entries against HLTB API data. Deviations may be false positives since the API's `hltb_name` field often echoes the Steam name rather than the actual HLTB title.
 
 **Phase 2: Games needing fixes** - Lists games where neither sanitize nor simplify produces a match, with suggested `name_fixes.lua` entries.
+
+## Verifying Entries via Steam API
+
+After adding entries, verify them against Steam's API to catch mismatches:
+
+```bash
+node -e "
+const ids = [APPID1, APPID2, ...];  // Add your AppIDs here
+(async () => {
+  for (const id of ids) {
+    const r = await fetch('https://store.steampowered.com/api/appdetails?appids=' + id);
+    const d = await r.json();
+    const name = d[id]?.data?.name || 'N/A';
+    console.log(id + ': ' + name);
+    await new Promise(r => setTimeout(r, 200));
+  }
+})();
+"
+```
+
+Compare the Steam names with your HLTB fix names. Flag entries where:
+- The game title is completely different (wrong AppID or HLTB error)
+- Edition suffixes don't match (e.g., "HD" vs base game, "Definitive Edition" vs original)

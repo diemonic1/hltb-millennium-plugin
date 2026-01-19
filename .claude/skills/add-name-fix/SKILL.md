@@ -80,6 +80,29 @@ When adding many entries at once (e.g., from discover-name-fixes.js output):
 
 This is much faster than inserting each entry in the correct position.
 
+## Verifying Entries via Steam API
+
+After adding entries, verify them against Steam's API to catch mismatches:
+
+```bash
+node -e "
+const ids = [APPID1, APPID2, ...];  // Add your AppIDs here
+(async () => {
+  for (const id of ids) {
+    const r = await fetch('https://store.steampowered.com/api/appdetails?appids=' + id);
+    const d = await r.json();
+    const name = d[id]?.data?.name || 'N/A';
+    console.log(id + ': ' + name);
+    await new Promise(r => setTimeout(r, 200));
+  }
+})();
+"
+```
+
+Compare the Steam names with your HLTB fix names. Flag entries where:
+- The game title is completely different (wrong AppID or HLTB error)
+- Edition suffixes don't match (e.g., "HD" vs base game, "Definitive Edition" vs original)
+
 ## Example Workflow
 
 For app ID 1004640:
