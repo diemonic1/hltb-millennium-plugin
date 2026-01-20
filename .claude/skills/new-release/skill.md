@@ -127,7 +127,7 @@ Abort if any tests fail. If busted is not available, see `docs/development.md` s
 
 #### Step 6: Commit
 ```bash
-git add plugin.json package.json package-lock.json
+git add plugin.json package.json
 git commit -m "Release v{VERSION}"
 ```
 
