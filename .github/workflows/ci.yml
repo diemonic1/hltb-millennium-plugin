@@ -40,6 +40,12 @@ jobs:
       - name: Build
         run: npm run build
 
+  build-artifact:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/build.yml
+    with:
+      version: pr-${{ github.event.pull_request.number }}
+
   test:
     needs: changes
     if: ${{ always() && (needs.changes.outputs.lua == 'true' || github.event_name == 'workflow_dispatch') }}
