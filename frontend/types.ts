@@ -42,3 +42,19 @@ export interface GamePageInfo {
   appId: number;
   container: HTMLElement;
 }
+
+// Global Steam/Millennium types
+declare global {
+  interface Window {
+    MainWindowBrowserManager?: {
+      m_lastLocation: {
+        pathname: string;
+      };
+    };
+    SteamClient?: {
+      Apps?: {
+        GetActiveAppID?: () => Promise<number>;
+      };
+    };
+  }
+}
