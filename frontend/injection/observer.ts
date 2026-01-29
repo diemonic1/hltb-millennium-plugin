@@ -37,7 +37,7 @@ export function refreshDisplay(): void {
 }
 
 async function handleGamePage(doc: Document, selectors: LibrarySelectors): Promise<void> {
-  const gamePage = detectGamePage(doc, selectors);
+  const gamePage = await detectGamePage(doc, selectors);
   if (!gamePage) {
     // Silent return - game page not detected (common during DOM transitions)
     return;
