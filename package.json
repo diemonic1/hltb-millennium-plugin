@@ -1,6 +1,6 @@
 {
   "name": "hltb-for-millennium",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "scripts": {
     "dev": "millennium-ttc --build dev",
