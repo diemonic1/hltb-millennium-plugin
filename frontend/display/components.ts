@@ -34,6 +34,13 @@ export function createDisplay(
     container.style.left = `${settings.horizontalOffset}px`;
     container.style.right = 'auto';
   }
+  if (settings.alignBottom) {
+    container.style.bottom = `${settings.verticalOffset}px`;
+    container.style.top = 'auto';
+  } else {
+    container.style.top = `${settings.verticalOffset}px`;
+    container.style.bottom = 'auto';
+  }
 
   const stats = [
     { value: data?.comp_main, label: 'Main Story' },

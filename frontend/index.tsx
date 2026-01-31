@@ -17,22 +17,36 @@ let initializedForUserId: string | null = null;
 const SettingsContent = () => {
   const [message, setMessage] = useState('');
   const [horizontalOffset, setHorizontalOffset] = useState('0');
+  const [verticalOffset, setVerticalOffset] = useState('0');
   const [showViewDetails, setShowViewDetails] = useState(true);
   const [alignRight, setAlignRight] = useState(true);
+  const [alignBottom, setAlignBottom] = useState(true);
 
   useEffect(() => {
     const settings = getSettings();
     setHorizontalOffset(String(settings.horizontalOffset));
+    setVerticalOffset(String(settings.verticalOffset));
     setShowViewDetails(settings.showViewDetails);
     setAlignRight(settings.alignRight);
+    setAlignBottom(settings.alignBottom);
   }, []);
 
-  const onOffsetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onHorizontalOffsetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setHorizontalOffset(value);
     const numValue = parseInt(value, 10);
     if (!isNaN(numValue) && numValue >= 0) {
       saveSettings({ ...getSettings(), horizontalOffset: numValue });
+      refreshDisplay();
+    }
+  };
+
+  const onVerticalOffsetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setVerticalOffset(value);
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue >= 0) {
+      saveSettings({ ...getSettings(), verticalOffset: numValue });
       refreshDisplay();
     }
   };
@@ -46,6 +60,12 @@ const SettingsContent = () => {
   const onAlignRightChange = (checked: boolean) => {
     setAlignRight(checked);
     saveSettings({ ...getSettings(), alignRight: checked });
+    refreshDisplay();
+  };
+
+  const onAlignBottomChange = (checked: boolean) => {
+    setAlignBottom(checked);
+    saveSettings({ ...getSettings(), alignBottom: checked });
     refreshDisplay();
   };
 
@@ -86,6 +106,24 @@ const SettingsContent = () => {
 
   return (
     <>
+      <Field label="Horizontal Offset (px)" description="Distance from edge. Default: 0" bottomSeparator="standard">
+        <input
+          type="number"
+          min={0}
+          value={horizontalOffset}
+          onChange={onHorizontalOffsetChange}
+          style={{ width: '60px', padding: '4px 8px' }}
+        />
+      </Field>
+      <Field label="Vertical Offset (px)" description="Distance from edge. Default: 0" bottomSeparator="standard">
+        <input
+          type="number"
+          min={0}
+          value={verticalOffset}
+          onChange={onVerticalOffsetChange}
+          style={{ width: '60px', padding: '4px 8px' }}
+        />
+      </Field>
       <Field label="Align to Right" description="Position on right side of header. Disable for left side." bottomSeparator="standard">
         <input
           type="checkbox"
@@ -94,13 +132,12 @@ const SettingsContent = () => {
           style={{ width: '20px', height: '20px' }}
         />
       </Field>
-      <Field label="Horizontal Offset (px)" description="Distance from edge. Default: 0" bottomSeparator="standard">
+      <Field label="Align to Bottom" description="Position at bottom of header. Disable for top." bottomSeparator="standard">
         <input
-          type="number"
-          min={0}
-          value={horizontalOffset}
-          onChange={onOffsetChange}
-          style={{ width: '60px', padding: '4px 8px' }}
+          type="checkbox"
+          checked={alignBottom}
+          onChange={(e) => onAlignBottomChange(e.target.checked)}
+          style={{ width: '20px', height: '20px' }}
         />
       </Field>
       <Field label="Show View Details Link" description="Display link to HLTB game page" bottomSeparator="standard">

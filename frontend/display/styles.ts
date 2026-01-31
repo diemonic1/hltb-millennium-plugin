@@ -1,14 +1,12 @@
 const HLTB_STYLES = `
 #hltb-for-millennium {
   position: absolute;
-  bottom: 0;
   width: fit-content;
   z-index: 100;
 }
 
 .hltb-info {
   background: rgba(14, 20, 27, 0.85);
-  border-top: 2px solid rgba(61, 68, 80, 0.54);
   padding: 8px 0;
 }
 
