@@ -16,7 +16,7 @@ interface SteamImportResponse {
   data?: Array<{ steam_id: number; hltb_id: number }>;
 }
 
-const GetHltbData = callable<[{ app_id: number }], string>('GetHltbData');
+const GetHltbData = callable<[{ app_id: number, app_name_from_ui: string }], string>('GetHltbData');
 const GetHltbDataById = callable<[{ hltb_id: number; app_id: number }], string>('GetHltbDataById');
 const FetchSteamImportRpc = callable<[{ steam_user_id: string }], string>('FetchSteamImport');
 
@@ -33,7 +33,7 @@ async function fetchFromBackend(appId: number): Promise<HltbGameResult | null> {
     } else {
       // Standard path: name-based search
       log('Calling backend for appId:', appId);
-      resultJson = await GetHltbData({ app_id: appId });
+      resultJson = await GetHltbData({ app_id: appId, app_name_from_ui: window.lastClickedElement });
     }
 
     if (resultJson === undefined || resultJson === null) {
