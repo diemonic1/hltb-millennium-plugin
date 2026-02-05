@@ -159,6 +159,8 @@ const SettingsContent = () => {
   );
 };
 
+window.lastClickedElement = "undefined";
+
 export default definePlugin(() => {
   log('HLTB plugin loading...');
 
@@ -170,6 +172,32 @@ export default definePlugin(() => {
     if (!doc?.body) return;
 
     log('Window created:', context.m_strName);
+
+    const popup_target = context.m_popup.document.getElementById('popup_target');
+
+    if (context.m_strName === 'SP Desktop_uid0'
+        && popup_target != null 
+        && popup_target != undefined)
+    {
+      popup_target.addEventListener('mousedown', (e) => {
+        try {
+          log('try to get name for HLTB');
+          
+          const x = e.clientX;
+          const y = e.clientY;
+
+          const draggables = popup_target.querySelectorAll('[draggable="true"]');
+
+          for (const el of draggables) {
+            const rect = el.getBoundingClientRect();
+            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+              window.lastClickedElement = el.children[1].innerText;
+              log('HLTB element was clicked: ' + window.lastClickedElement);
+            }
+          }
+        } catch (error) {}
+      });
+    }
 
     // Clean up old document if switching modes
     if (currentDocument && currentDocument !== doc) {
